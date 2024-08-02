@@ -1,8 +1,6 @@
 
-// although this uses babylon it works in 3js also
 // @todo have some kind of generic math library
-
-import "../volume-babylon3d/libs/babylon.js"
+// import "../babylon3d/libs/babylon.js"
 
 function navigate(event,entity,sys) {
 
@@ -31,8 +29,10 @@ function navigate(event,entity,sys) {
 	}
 
 	// get current orientation as euler and use to estimate translation target
-	let rot = BABYLON.Quaternion.FromEulerAngles(...ypr)
-	let vec = new BABYLON.Vector3(x,0,m).rotateByQuaternionToRef(rot,BABYLON.Vector3.Zero())
+	//let rot = BABYLON.Quaternion.FromEulerAngles(...ypr)
+	//let vec = new BABYLON.Vector3(x,0,m).rotateByQuaternionToRef(rot,BABYLON.Vector3.Zero())
+	let rot = new THREE.Quaternion().setFromEuler( new THREE.Euler(...ypr))
+	let vec = new THREE.Vector3(x,0,m).applyQuaternion(rot)
 
 	// translate as a function of direction
 	xyz[0] += vec.x
