@@ -32,7 +32,7 @@ const resolve = async (blob,sys) => {
 
 	props.uuid = sys.selfid ? sys.selfid : 'a-locally-unique-uuid'
 
-	console.log("player spawner: spawning a player",props)
+	//console.log("player spawner: spawning a player",props)
 
 	await sys.resolve(props)
 

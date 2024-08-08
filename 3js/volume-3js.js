@@ -11,10 +11,6 @@ import { OrbitControls } from './three/addons/controls/OrbitControls.js'
 import { RoomEnvironment } from './three/addons/environments/RoomEnvironment.js'
 import { VRM, VRMUtils, VRMHumanoid, VRMLoaderPlugin } from './three-vrm.module.js'
 
-import { animations_clips_load_bind, animations_update } from './animation.js'
-
-import { fixup_path } from '../fixup-path.js'
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // GLTF Loader helpers
@@ -57,7 +53,7 @@ loader.register((parser) => { return new VRMLoaderPlugin(parser) })
 class VolumeManager {
 
 	uuid = 0
-	entities = {}
+	volumes = {}
 	parentDiv = null
 
 	///
@@ -186,6 +182,11 @@ class VolumeManager {
 
 	step(time=0,delta=0) {
 
+		// update built in animations
+		Object.values(this.volumes).forEach(volume=>{
+			if(volume._mixer) volume._mixer.update(delta/1000)
+		})
+
 		// update controls
 		if (this.controls) {
 			this._camera_hide_near_target()
@@ -194,16 +195,10 @@ class VolumeManager {
 
 		// reprint the scene
 		this.renderer.render( this.scene, this.camera )
-
-		// update the animations after render because this allows any other manual animation code to override any given animation driven effect
-		Object.values(this.entities).forEach(entity=> {
-			animations_update(entity.volume,time,delta)
-		})
-
 	}
 
 	//
-	// deal witih browser window resizing
+	// browser window resized?
 	//
 
 	_resize() {
@@ -272,7 +267,7 @@ class VolumeManager {
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
-	// observe changes to volume geometry state and make sure the display reflects those changes - also gltfs and load animations
+	// update geometry - also load gltfs
 	//
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -290,8 +285,6 @@ class VolumeManager {
 
 		// assign geometry and load art
 		// @todo this runs once only for now improve later
-		// @todo detect dynamic changes to this string later and delete previous
-		// this is just a quick hack to get some art assets loaded up for now - @todo improve and make more robust
 
 		else if( volume.geometry &&
 				!volume._node &&
@@ -300,7 +293,7 @@ class VolumeManager {
 		) {
 			volume._node_tried_load = true
 
-			const path = fixup_path(volume.geometry)
+			const path = volume.geometry
 
 			//console.log("volume-3js: loading",volume.geometry,path)
 
@@ -314,22 +307,21 @@ class VolumeManager {
 			// specifically force these not to be culled
 			gltf.scene.traverse((child) => { if ( child.type == 'SkinnedMesh' ) { child.frustumCulled = false; } })
 
-			// track the gltf
-			volume._gltf = gltf
-
-			// track of camera - this may need rethinking @todo
+			// track shared camera - this may need rethinking @todo
 			volume._camera = this.camera
+
+			// track built-in animations
+			volume._built_in_animations = gltf.animations
 
 			// support ordinary gltfs
 			if(!gltf.userData || !gltf.userData.vrm) {
 				volume._node = gltf.scene
-				this.scene.add(gltf.scene)
 			}
 
 			// special support for vrms
 			else {
 
-				const vrm = volume._vrm = gltf.scene._vrm = gltf._vrm = gltf.userData.vrm
+				const vrm = gltf.userData.vrm
 
 				// vrm 0.0 rigs are rotated backwards due to a bug - for now let's not support vrm 0.0 at all
 				if(false) {
@@ -347,38 +339,33 @@ class VolumeManager {
 				// do not try hide parts of models - often it will make parts of them invisible due to scale issues with frustrum dist
 				vrm.scene.traverse( ( obj ) => { obj.frustumCulled = false })
 
-				// track the vrm.scene (not the gltf.scene)
+				// use the vrm.scene (not the gltf.scene)
 				volume._node = vrm.scene
-				this.scene.add(vrm.scene)
 
-				//console.log("volume-3js: loaded vrm",vrm)
+				// separately track the vrm itself 
+				volume._vrm = vrm
 			}
 
-			// remember built in animations - first animation will play unless animation:null
-			if(gltf.animations) {
-				if(!volume._animation_clips) volume._animation_clips = {}
-				for(let clip of gltf.animations) {
-					//console.log("volume-3js: noticed animation in the geometry file",volume.uuid,clip.name)
-					volume._animation_clips[clip.name] = [clip]
-				}
-			}
+			// add to scene
+			this.scene.add(volume._node)
 
-			// rememmber explicitly specified animations - first animation will play unless animation:null
-			await animations_clips_load_bind(volume)
-
-			// setup and play a 'default' if none exists
-			const values = volume._animation_clips ? Object.values(volume._animation_clips) : null
-			if(values && values.length) {
-				if(!volume._animation_clips['default']) {
-					volume._animation_clips['default'] = values[0]
-				}
-				if(!volume.hasOwnProperty('animation')) {
-					volume.animation = 'default'
+			// play built in animations in some cases
+			if(gltf.animations && gltf.animations.length && volume.animation === 'builtin') {
+				try {
+					const mixer = volume._mixer = new THREE.AnimationMixer(volume._node)
+					const action = volume._action = mixer.clipAction(gltf.animations[0])
+					action.reset()
+					action.loop = THREE.LoopRepeat
+					action.play()
+					//console.log('volume 3js - playing a built in animation',volume.uuid,gltf.animations[0])
+				} catch(err) {
+					console.error(err)
 				}
 			}
 
 			//console.log("volume-3js - fully loaded asset",volume.uuid)
 		}
+
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -389,31 +376,28 @@ class VolumeManager {
 
 	_update_pose(volume) {
 
-		if(!volume.transform) {
-			volume.transform = { xyz:[0,0,0], ypr:[0,0,0], whd:[0,0,0]}
+		// must have a node
+		if(!volume._node) {
+			console.warn("volume-3js - missing props",volume)
+			return
 		}
 
-		if(!volume._node) {
-			console.warn("volume-3js - entity missing props",volume)
-			return
+		// inject if does not exist
+		if(!volume.transform) {
+			volume.transform = { xyz:[0,0,0], ypr:[0,0,0], whd:[0,0,0]}
 		}
 
 		const transform = volume.transform
 		const node = volume._node
 
-		// for now set the xyz and ypr to target - @todo introduce real interframe update smoothing
-		if(transform.target_xyz) transform.xyz = transform.target_xyz
-		if(transform.target_ypr) transform.ypr = transform.target_ypr
-
-		// if ypr has changed then set it
-		// yaw pitch and roll are not mapped correctly to xyz @todo
+		// update ypr? - order of ypr is wrong @todo
 		if(transform.ypr && node.rotation && !(node.rotation.x == transform.ypr[0] && node.rotation.y == transform.ypr[1] && node.rotation.z==transform.ypr[2])) {
 			node.rotation.x = transform.ypr[0]
 			node.rotation.y = transform.ypr[1]
 			node.rotation.z = transform.ypr[2]
 		}
 
-		// if position has changed then set it
+		// update xyz?
 		if(transform.xyz && node.position && !(node.position.x == transform.xyz[0] && node.position.y == transform.xyz[1] && node.position.z==transform.xyz[2])) {
 			node.position.x = transform.xyz[0]
 			node.position.y = transform.xyz[1]
@@ -427,143 +411,96 @@ class VolumeManager {
 			node.scale.z = transform.whd[2]
 		}
 
-		// 
-
-		// revise lookat? have this last since it depends on camera state
-		// todo - this is a bit of a hack to operate directly on the camera - it should ideally be node set target
-		//if(transform.lookat && !(node.lookat && node.lookat.x == transform.lookat[0] && node.lookat.y == transform.lookat[1] && node.lookat.z==transform.lookat[2])) {
-		//	//if(node.setTarget) node.setTarget(new BABYLON.Vector3(...volume.transform.lookat))
-		//	node.lookat = transform.lookat
-		//}
-
-		// set position
-		// @todo only if changed
-		// @todo consolidate _vrm and _gltf - test if i can use node for vrm? 
-		// @todo allow multiple cameras
-		// @todo consolidate the concepts here - rather than special treatment
-		// @todo allow anything to lookat anything
-
-		if(volume.camera) {
-			if(transform.lookat) {
-				this.camera.lookAt(...transform.lookat)
-				if(this.controls) this.controls.target.set(...transform.lookat)
-			}
-			if(transform.xyz) {
-				this.camera.position.set(...transform.xyz)
-			}
-		}
-		else if(transform.xyz) {
-			if(volume._vrm) {
-				const x = transform.xyz[0]
-				const y = transform.xyz[1]
-				const z = transform.xyz[2]
-				volume._vrm.scene.position.set(x,y,z)
-			}
-			else if(volume._node) {
-				const x = transform.xyz[0]
-				const y = transform.xyz[1]
-				const z = transform.xyz[2]
-				volume._node.position.set(x,y,z)
-			}
+		// update focus cam - @todo deal with deletions
+		if(volume.focus) {
+			this._camera_target = node
 		}
 
-		if(volume.camera_follow) {
-			this._camera_retarget(volume._node)
+		if(this._camera_target) {
+			this._camera_retarget(this._camera_target)
 		}
-
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
-	// deal with changes to entities that have volumes
+	// have 3js react to changes on a given volume
 	//
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	async resolve_entity(entity,parent=null) {
+	async resolve(volume,parent=null) {
 
-		// ignore invalid
-		if(!entity.uuid || !entity.volume) {
-			console.warn('volume-3js - entity has no uuid',entity)
+		if(!volume.uuid) {
+			console.error('volume - volume must have uuid',volume)
 			return
 		}
 
-		// stuff this in for now for convenience
-		entity.volume.uuid = entity.uuid
+		// apply changes
+		await this._update_geometry(volume)
+		this._update_pose(volume)
 
-		// laboriously examine entire entity for changes and then update threejs
-		await this._update_geometry(entity.volume)
-		this._update_pose(entity.volume)
-
-		// peek directly entity children and also update them
-		if(!entity.children) return
-		let counter = 0
-		for(const child of entity.children) {
-			if(!child.volume) continue
-			if(!child.uuid) child.uuid = `${entity.uuid}/child-${counter++}`
-			await this.resolve_entity(child,entity)
+		// update children?
+		for(let i = 0; volume.children && i < volume.children.length; i++) {
+			const child = volume.children[i].volume ? volume.children[i].volume : volume.children[i]
+			child.uuid = `${volume.uuid}/${i++}`
+			await this.resolve(child,volume)
 		}
 	}
 
 	//
-	// delete an entity
+	// delete
 	//
 
-	obliterate(entity) {
+	obliterate(volume) {
 
-		console.log("volume-3js: being asked to destroy entity",entity)
-
-		for(const child of entity.children) {
-			this.obliterate(child)
+		if(!volume.uuid) {
+			console.error('volume - volume must have uuid',volume)
+			return
 		}
 
-		const uuid = entity.uuid
-		delete _volume_entities[uuid]
-		delete this.entities[uuid]
+		console.log("volume-3js: being asked to destroy",volume)
 
-		if(entity.volume._node) {
-			entity.volume._node.removeFromParent()
-			entity.volume._node = null
+		for(const child of volume.children) {
+			this.obliterate(child.volume ? child.volume : child)
 		}
+
+		delete this.volumes[volume.uuid]
+		delete _volumes[volume.uuid]
+
+		if(!volume._node) return
+		volume._node.removeFromParent()
+		volume._node = null
 	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// volume manager helper - find the right manager for any given entity
+// volume manager helper - find the right manager
 //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const _volume_managers = {}
-const _volume_entities = {}
+const _volumes = {}
 
-function _volume_manager_get(entity) {
-
-	if(!entity.uuid || !entity.volume) {
-		console.error('volume - must have uuid and volume')
-		return
-	}
+function _volume_manager_get(volume) {
 
 	// return manager if bound
-	let manager = _volume_entities[entity.uuid]
+	let manager = _volumes[volume.uuid]
 	if(manager) {
 		return manager
 	}
 
 	// volumes are associated with some manager either explicitly or implicitly
-	// a volume can indicate a manager by name
-	const name = entity.volume.dom && entity.volume.dom.length ? entity.volume.dom : "volume001"
+	const name = volume.dom && volume.dom.length ? volume.dom : "volume001"
 
-	// may bind and return
+	// build a manager?
 	manager = _volume_managers[name]
-	if(manager) {
-		manager.entities[entity.uuid] = entity
-		_volume_entities[entity.uuid] = manager
-		return manager
+	if(!manager) {
+		manager = _volume_managers[name] = new VolumeManager(name)
 	}
 
-	// make manager?
-	manager = _volume_entities[entity.uuid] = _volume_managers[name] = new VolumeManager(name)
-	manager.entities[entity.uuid] = entity
+	// associate with volume
+	_volumes[volume.uuid] = manager
+	manager.volumes[volume.uuid] = volume
 	return manager
 }
 
@@ -571,8 +508,7 @@ function _volume_manager_get(entity) {
 ///
 /// Volume observer
 ///		- handle tick events
-///		- also handle changes to volumes
-///		- volume isn't interested in observing transient changes but in looking at the whole entity and detecting changes itself
+///		- also handle changes to a volume
 ///
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -581,6 +517,7 @@ export const volume_observer = {
 	about: 'volume observer using 3js',
 	resolve: async (blob,sys) => {
 
+		// advance volume systems?
 		if(blob.tick) {
 			Object.values(_volume_managers).forEach(manager=>{
 				manager.step(blob.time,blob.delta)
@@ -588,31 +525,26 @@ export const volume_observer = {
 			return
 		}
 
-		if(!blob.volume) {
+		// a request to change a valid volume?
+		if(!blob.volume || !blob.uuid || !blob._entity || !blob._entity.volume) {
 			return
 		}
 
-		if(!blob.uuid) {
-			console.warn('volume: volume entity must have uuid')
+		// operate on whole volume not just changes
+		const volume = blob._entity.volume
+
+		// stuff the uuid into the volume for convenience
+		volume.uuid = blob.uuid
+
+		// find appropriate manager
+		let manager = _volume_manager_get(volume)
+
+		if(blob._entity.obliterate) {
+			manager.obliterate(volume)
 			return
 		}
 
-		let manager = _volume_manager_get(blob)
-
-		let entities = sys.query({uuid:blob.uuid})
-
-		if(entities && entities.length) {
-			const entity = entities[0]
-
-			if(entity.obliterate) {
-				manager.obliterate(entity)
-				return
-			}
-
-			await manager.resolve_entity(entity)
-		}
-
-		return
+		await manager.resolve(volume)
 	}
 }
 

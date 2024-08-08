@@ -25,6 +25,7 @@ function navigate(event,entity,sys) {
 		case 37: event.shiftKey ? x = 0.1 : ypr[1] +=0.1; break
 		case 40: m = -0.1; break
 		case 38: m = 0.1; break
+		case 0: break
 		default: return
 	}
 
@@ -39,17 +40,21 @@ function navigate(event,entity,sys) {
 	xyz[1] += vec.y
 	xyz[2] += vec.z
 
-	// set targets for smoothing
-	transform.target_xyz = xyz
-	transform.target_ypr = ypr
-
-	// broadcast changes
+	// broadcast player movement - @todo smoothing
 	sys.resolve({
 		uuid: entity.uuid,
 		volume: {
 			transform: { xyz, ypr }
 		},
 		network:{}
+	})
+
+	// drive a chase camera
+	sys.resolve({
+		uuid: entity.uuid,
+		volume: {
+			focus: { xyz, ypr }
+		},
 	})
 
 }
@@ -59,6 +64,7 @@ let handler = null
 export const navigation_observer = {
 	about: 'navigation observer',
 	resolve: (blob,sys) => {
+
 		if(blob.tick) return blob
 		if(!blob.navigation) return blob
 
@@ -71,10 +77,11 @@ export const navigation_observer = {
 			handler = document.addEventListener('keydown',(event) => {
 				navigate(event,blob,sys)
 			})
+
+			// force an initial event
+			navigate({keyCode:0},blob,sys)
 		}
 
-		// slight hack; force an earlier reaction to the entity since it is 'pure'
-		navigate({key:'r'},blob,sys)
 		return true
 	}
 }
