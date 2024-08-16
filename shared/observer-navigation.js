@@ -49,11 +49,11 @@ function navigate(event,entity,sys) {
 		network:{}
 	})
 
-	// drive a chase camera
+	// update chase camera
 	sys.resolve({
 		uuid: entity.uuid,
 		volume: {
-			focus: { xyz, ypr }
+			focus: { xyz: [xyz[0],xyz[1]+1.5,xyz[2]], ypr }
 		},
 	})
 

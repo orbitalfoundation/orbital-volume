@@ -56,11 +56,12 @@ class VolumeManager {
 	volumes = {}
 	parentDiv = null
 
+
 	///
 	/// init 3js scene with fundamental features
 	///
 
-	constructor (name="volume001",opt = {}) {
+	constructor (name="volume001",opt = { cameraHeight: 1.5, cameraDistance: 5 }) {
 
 		if(!name) {
 			console.error('volume - must have some kind of dom name')
@@ -82,24 +83,7 @@ class VolumeManager {
 		}
 
 		//
-		// merge options if any
-		//
-
-		this.opt = {
-			cameraView: 'full',
-			cameraDistance: 0,
-			cameraX: 0,
-			cameraY: 0,
-			cameraRotateX: 0,
-			cameraRotateY: 0,
-			cameraRotateEnable: true,
-			cameraPanEnable: false,
-			cameraZoomEnable: true,
-		}
-		Object.assign( this.opt, opt || {} )
-
-		//
-		// start renderer
+		// renderer
 		//
 
 		const renderer = this.renderer = new THREE.WebGLRenderer({
@@ -122,7 +106,7 @@ class VolumeManager {
 		new ResizeObserver(this._resize.bind(this)).observe(this.parentDiv)
 
 		//
-		// create a default scene with a default camera and default controls for now
+		// scene
 		//
 
 		const scene = this.scene = new THREE.Scene();
@@ -134,30 +118,39 @@ class VolumeManager {
 			this.scene.environment = pmremGenerator.fromScene( new RoomEnvironment() ).texture
 		}
 
+		//
+		// camera
+		//
+
 		const fov = 35
-		const aspect = parentDiv.clientWidth / parentDiv.clientHeight
 		const near = 0.01
 		const far = 100
-		const camera = this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
-		//scene.add(camera) <- not needed
-		scene.camera = camera
-		scene.parentDiv = parentDiv
-
-		if(true && camera) {
+		const aspect = parentDiv.clientWidth / parentDiv.clientHeight
+		const camera = scene.camera = this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
+		camera.position.set(0,opt.cameraHeight,-opt.cameraDistance)
+		camera.target = new THREE.Vector3(0,opt.cameraHeight,0)
+		camera.focus = {
+			xyz: [0,opt.cameraHeight,0],
+			ypr: [0,0,0],
+			node:false,
+			when:0,
+			latched:true,
+		}
+		this._camera_update()
+		if(camera) {
 			this.controls = new OrbitControls( camera, this.renderer.domElement )
-			this.controls.enableZoom = this.opt.cameraZoomEnable
-			this.controls.enableRotate = this.opt.cameraRotateEnable
-			this.controls.enablePan = this.opt.cameraPanEnable
+			this.controls.enableZoom = true
+			this.controls.enableRotate = true
+			this.controls.enablePan = true
 			this.controls.minDistance = 0.1
 			this.controls.maxDistance = far
 			this.controls.autoRotateSpeed = 0
 			this.controls.autoRotate = false
 		}
-
-		this._camera_retarget()
+		scene.add(camera)
 
 		//
-		// create a default light so we can see what is going on - can remove later if one shows up from data driven sources - @todo
+		// default light
 		//
 
 		const light = this.light = new THREE.DirectionalLight( 0xffffff, Math.PI );
@@ -187,11 +180,8 @@ class VolumeManager {
 			if(volume._mixer) volume._mixer.update(delta/1000)
 		})
 
-		// update controls
-		if (this.controls) {
-			this._camera_hide_near_target()
-			this.controls.update()
-		}
+		// update camera if needed
+		this._camera_update()
 
 		// reprint the scene
 		this.renderer.render( this.scene, this.camera )
@@ -210,60 +200,62 @@ class VolumeManager {
 	}
 
 	//
-	// work around some issues with wanting orbit and nav at the same time - improve later
+	// work around some issues with wanting orbit and nav at the same time - improve later @todo
 	//
 
-	_camera_retarget(node=null) {
+	_camera_update() {
 
 		const camera = this.camera
+		const focus = camera.focus
 
-		if(!node) {
-			camera.distance = 5
-			camera.height = 1.5
-			camera.targetHeight = 1.5
-			camera.target = new THREE.Vector3(0,camera.targetHeight,0)
-			camera.position.set(camera.target.x,camera.target.y,camera.target.z+camera.distance)
-			let delta = camera.targetHeight - camera.height
-			camera.lookAt(camera.target.x,camera.target.y-delta,camera.target.z)
-			return
+		// may move camera
+		if(focus.latched) {
+
+			// get target position
+			const target = new THREE.Vector3(...focus.xyz)
+			// distance to it desired
+			let distance = 5 // camera.position.distanceTo(target)
+			// orientation we want to be behind it
+			let rot = new THREE.Quaternion().setFromEuler( new THREE.Euler(...focus.ypr))
+			// form a vector describing that rotation at a distance
+			const v = new THREE.Vector3(0,0,-distance).applyQuaternion(rot)
+			// this is the target position plus that vector
+			const ideal = target.clone().add(v)
+
+			camera.position.set(ideal.x,ideal.y,ideal.z)
+			//camera.position.x += (ideal.x - camera.position.x ) / 2
+			//camera.position.y += (ideal.y - camera.position.y ) / 2
+			//camera.position.z += (ideal.z - camera.position.z ) / 2
+
+			// update lookat
+			//camera.target.x += (focus.xyz[0] - camera.target.x) / 2
+			//camera.target.y += (focus.xyz[1] - camera.target.y) / 2
+			//camera.target.z += (focus.xyz[2] - camera.target.z) / 2
+			camera.target.x = focus.xyz[0]
+			camera.target.y = focus.xyz[1]
+			camera.target.z = focus.xyz[2]
+
+			camera.lookAt(camera.target.x,camera.target.y,camera.target.z)
+			if(this.controls) {
+				this.controls.target.set(camera.target.x,camera.target.y,camera.target.z)
+			}
 		}
 
-		// get distance prior to the object moving and after any control or other effects
-		let distance = camera.position.distanceTo( camera.target )
+		focus.latched = false
 
-		// update target
-		camera.target.x = node.position.x
-		camera.target.y = node.position.y + camera.targetHeight
-		camera.target.z = node.position.z
-
-		// put camera behind target
-		const v = new THREE.Vector3(0,0,-distance).applyQuaternion(node.quaternion)
-		const p = node.position.clone().add(v)
-		camera.position.set(p.x,p.y+camera.height,p.z)
-
-		// update lookat
-		camera.lookAt(camera.target.x,camera.target.y,camera.target.z)
-
-		// adjust control lookat
+		// update controls
 		if(this.controls) {
-			this.controls.target.set(camera.target.x,camera.target.y,camera.target.z)
+			this.controls.update()
 		}
 
-		node.visible = true
-		this.latchNode = node
+		// hide or show target
+		if(focus.node) {
+			let distance = camera.position.distanceTo(camera.target)
+			focus.node.visible = distance < 2 ? false : true
+		}
+
 	}
 
-	//
-	// hide the main player if the camera is close to them
-	// @todo this could move to be a player navigation code responsibility rather than here
-	//
-
-	_camera_hide_near_target() {
-		if(!this.latchNode) return
-		const camera = this.camera
-		let distance = camera.position.distanceTo( camera.target )
-		this.latchNode.visible = distance < 2 ? false : true
-	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
@@ -390,6 +382,8 @@ class VolumeManager {
 		const transform = volume.transform
 		const node = volume._node
 
+		// @todo could allow update of quaternion itself say by passing rot
+
 		// update ypr? - order of ypr is wrong @todo
 		if(transform.ypr && node.rotation && !(node.rotation.x == transform.ypr[0] && node.rotation.y == transform.ypr[1] && node.rotation.z==transform.ypr[2])) {
 			node.rotation.x = transform.ypr[0]
@@ -411,13 +405,14 @@ class VolumeManager {
 			node.scale.z = transform.whd[2]
 		}
 
-		// update focus cam - @todo deal with deletions
-		if(volume.focus) {
-			this._camera_target = node
-		}
-
-		if(this._camera_target) {
-			this._camera_retarget(this._camera_target)
+		// pull in properties from supplied focus if any
+		if(volume.hasOwnProperty('focus') && this.camera) {
+			this.camera.focus.latched = true
+			this.camera.focus.when = performance.now()
+			this.camera.focus.node = node
+			this.camera.focus.xyz = volume.focus.xyz
+			this.camera.focus.ypr = volume.focus.ypr
+			//this.camera.focus = { ...this.camera.focus, volume.focus, node, when: performance.now(), latched:true }
 		}
 	}
 
@@ -434,8 +429,10 @@ class VolumeManager {
 			return
 		}
 
-		// apply changes
+		// apply changes - @todo can i make art load async?
 		await this._update_geometry(volume)
+
+		// update pose after geometry loaded
 		this._update_pose(volume)
 
 		// update children?
@@ -467,6 +464,7 @@ class VolumeManager {
 		delete _volumes[volume.uuid]
 
 		if(!volume._node) return
+		if(this.camera && this.camera.focus && this.camera.focus.node === volume._node) camera.focus.node = null
 		volume._node.removeFromParent()
 		volume._node = null
 	}
