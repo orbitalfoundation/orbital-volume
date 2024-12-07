@@ -29,7 +29,7 @@ return gltfLoader
 	// loader.register((parser) => { return new VRMLoaderPlugin(parser) })
 }
 
-export default async function gltf(sys,surface,volume) {
+export default async function file_loader(sys,surface,volume) {
 
 	// only run on clients, and also only create once
 	if(surface.isServer || volume.node || !surface.scene) return
@@ -39,7 +39,7 @@ export default async function gltf(sys,surface,volume) {
 	const loader = surface.loader || (surface.loader = await getLoader())
 
 	//
-	// Placeholder
+	// Placeholder @todo switch below to be async?
 	//
 
 	const geometry = new THREE.SphereGeometry( 1, 32, 16 );
@@ -62,10 +62,10 @@ export default async function gltf(sys,surface,volume) {
 	// hack - don't delete meshes
 	gltf.scene.traverse((child) => { if ( child.type == 'SkinnedMesh' ) { child.frustumCulled = false; } })
 
-	// remember anims since the gltf loader stuffs them into a weird location
-	volume._animations = gltf.animations
+	// remember the root node although it is not used directly - but animations will need it
+	volume.original = gltf
 
-	// use this node, avoiding other errata
+	// use this node for rendering, avoiding other errata such as cameras and lights in this file
 	volume.node = gltf.scene
 
 	// rewrite the hopefully durable volume handle with live pose state; for ease of use
@@ -76,19 +76,6 @@ export default async function gltf(sys,surface,volume) {
 
 	// remove placeholder
 	surface.scene.remove( sphere )
-
-	// seems harmless to start built in animations if desired
-	if(gltf.animations && gltf.animations.length && volume.animation === 'builtin') {
-		try {
-			const mixer = volume._mixer = new THREE.AnimationMixer(volume._node)
-			const action = volume._action = mixer.clipAction(gltf.animations[0])
-			action.reset()
-			action.loop = THREE.LoopRepeat
-			action.play()
-		} catch(err) {
-			console.error('volume::gltf:animation err',err)
-		}
-	}
 
 }
 

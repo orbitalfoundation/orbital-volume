@@ -1,4 +1,6 @@
 
+const uuid = '/orbital/orbital-volume'
+
 //
 // this verison of volume.js does detect client or server conditions - later may split @todo
 //
@@ -27,14 +29,21 @@ const builders = {
 
 async function volume_resolve(blob,sys) {
 
+	// let active surfaces paint themselves
+	if(blob.tick) {
+		const surfaces = Object.entries(this._surfaces)
+		surfaces.forEach(surface=>{
+			if(surface.update) surface.update()
+		})
+	}
+
+	// ignore non volume events otherwise
 	if(!blob.volume) return
 	const volume = blob.volume
 
 	// @todo index entities spatially
 
-	// @todo handle deletions; including on rendering target if any
-
-	// objects (lights, cameras, geometry) are on a 'surface' and there can be more than one surface
+	// objects are on a 'surface' and there can be more than one surface
 	const name = volume.surface || 'volume001'
 	const surface = this._surfaces[name] || (this._surfaces[name] = {div:name,isServer})
 
@@ -65,9 +74,10 @@ function volume_query() {
 
 export const volume_manager = {
 
-	uuid: '/service/volume',
+	uuid,
 
 	_surfaces: {},
+	_volumes: {},
 
 	resolve: volume_resolve,
 

@@ -1,4 +1,6 @@
 
+const uuid = 'orbital/orbital-volume/scene'
+
 import { getThree } from './three.js'
 
 //
@@ -8,7 +10,10 @@ import { getThree } from './three.js'
 export default async function scene(sys,surface,volume={}) {
 
 	// only run on clients, and also only create a scene once per surface
-	if(surface.isServer || surface.scene || surface.renderer) return
+	if(surface.isServer || surface.scene || surface.renderer) {
+		console.error(uuid,'some kind of duplicate or other error with scene',surface,volume)
+		return
+	}
 
 	// get 3js
 	const THREE = getThree()
@@ -137,19 +142,11 @@ export default async function scene(sys,surface,volume={}) {
 
 	new ResizeObserver(resized).observe(node)
 
-	//
-	// @todo remove / move
-	// right now this will build animation frames forever here
-	// later it should be part of the larger step loop
-	// for now also force one frame of animation
-	//
-
-	const animate = () => {
-		requestAnimationFrame(animate)
+	// requestAnimationFrame() is called elsewhere and this is called for us when it is time to repaint
+	surface.update = () => {
 		if(controls)controls.update()
 		renderer.render(scene, camera)
 	}
-	animate()
 
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "orbital-volume",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "3d graphics wrapper for orbital",
   "main": "volume.js",
   "scripts": {
