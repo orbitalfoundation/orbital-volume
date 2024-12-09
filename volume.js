@@ -1,63 +1,60 @@
 
 const uuid = '/orbital/orbital-volume'
 
-//
-// this verison of volume.js does detect client or server conditions - later may split @todo
-//
-
 const isServer = (typeof window === 'undefined') ? true : false
 
-//
-// various geometry type handlers
-//
+import file from './handlers/file.js'
+import layer from './handlers/layer.js'
+import light from './handlers/light.js'
+import scene from './handlers/scene.js'
 
-const builders = {
-	file: null,
-	layer: null,
-	scene: null,
-	light: null,
-	cube: null,
-	box: null,
-	sphere: null,
-	cylinder: null,
-	plane: null,
-}
+const handlers = { file, layer, light, scene }
 
-//
-// handle volume objects - binding to geometry if needed
-//
+let id = 1
 
-async function volume_resolve(blob,sys) {
+async function resolve(blob,sys) {
 
-	// let active surfaces paint themselves
+	// volume update helper
+	const update = async (volume,changes)=> {
+
+		let handler = handlers[volume.geometry]
+		if(!handler) return
+
+		// volumes always have a surface
+		const name = volume.surface || 'volume001'
+		const surface = this._surfaces[name] || (this._surfaces[name] = {name,isServer})
+
+		// update
+		await handler(sys,surface,volume,changes)
+	}
+
+	// react to tick
 	if(blob.tick) {
-		const surfaces = Object.entries(this._surfaces)
-		surfaces.forEach(surface=>{
-			if(surface.update) surface.update()
-		})
+		const volumes = Object.values(this._volumes)
+		for(const volume of volumes) {
+			await update(volume,null)
+		}
 	}
 
-	// ignore non volume events otherwise
-	if(!blob.volume) return
-	const volume = blob.volume
-
-	// @todo index entities spatially
-
-	// objects are on a 'surface' and there can be more than one surface
-	const name = volume.surface || 'volume001'
-	const surface = this._surfaces[name] || (this._surfaces[name] = {div:name,isServer})
-
-	// fetch or find builder
-	let builder = builders[volume.geometry]
-	if(!builder && builders.hasOwnProperty(volume.geometry)) {
-		builder = (await import(`./geometry/${volume.geometry}.js`)).default
+	// react to changes on a volume
+	if(blob.volume) {
+		// for now grant a uuid - @todo loader should do this or we should throw an error
+		let uuid = blob.uuid
+		if(!uuid) {
+			uuid = blob.uuid = blob._metadata ? `${blob._metadata.key}` : `volume-${id++}`
+		}
+		// find previous volume if any and update changes
+		let volume = this._volumes[uuid]
+		if(!volume) {
+			volume = this._volumes[uuid] = blob.volume
+		}
+		// apply changes
+		await update(volume,blob.volume)
+		// delete if desired
+		if(blob.obliterate) {
+			delete this._volumes[uuid]
+		}
 	}
-
-	// update or build object
-	if(builder) {
-		await builder(sys,surface,volume)
-	}
-
 }
 
 // @tbd
@@ -68,26 +65,45 @@ function volume_time(blob) {
 function volume_query() {
 }
 
-//
-// volume manager
-//
+// @tbd - formalize schema?
 
-export const volume_manager = {
+/*
+	schema: {
+		volume: {
+			geometry: "",
+			pose: {},
+			node {},
+			animated: {
+				vrm: {},
+				original: {},
+				animations: {},
+				morphs: {},
+				dictionary: {},
+				targets: {},
+				body: {},
+				head: {},
+				neck: {},
+				left_eye: {},
+				right_eye: {},
+			}
+		}
+	}
+*/
 
+///
+/// volume system
+///
+/// observe and react to volume components on entities
+///
+
+export const volume_system = {
 	uuid,
-
-	_surfaces: {},
+	resolve,
 	_volumes: {},
-
-	resolve: volume_resolve,
-
-	// later switch to new pattern: @todo
-	//	resolve: [
-	//		{ handler: volume_resolve, filter: { volume: true }},
-	//		{ handler: volume_time, filter: { time: true } }
-	//	],
-
-	query: volume_query // unsure how to do this
+	_surfaces: {},
 }
+
+
+
 
 

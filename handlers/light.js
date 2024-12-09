@@ -1,10 +1,11 @@
 
-import { getThree, buildMaterial, bindPose } from './three.js'
+import { getThree, buildMaterial, bindPose } from './three-helper.js'
 
-export default async function light(sys,surface,volume) {
+export default async function light(sys,surface,volume,isServer) {
 
 	// only run on clients, and also only create once
-	if(surface.isServer || volume.node) return
+	if(isServer || volume._built) return
+	volume._built = true
 
 	const THREE = getThree()
 

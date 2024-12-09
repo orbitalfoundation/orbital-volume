@@ -3,16 +3,16 @@ const isServer = (typeof window === 'undefined') ? true : false
 
 globalThis.THREE = null
 
-if(!isServer) {
+if(isServer == false) {
 	globalThis.THREE = await import('three')
 }
 
 ///
-/// get a handle on threejs on client
+/// get a handle on threejs on client - quirky hoop to be able to at least not have an import fail on a server
 ///
 
 export function getThree() {
-	return globalThis.THREE
+	return isServer == true ? null : globalThis.THREE
 }
 
 ///

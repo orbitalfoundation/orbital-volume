@@ -1,5 +1,5 @@
 
-import { getThree, buildMaterial, bindPose } from './three.js'
+import { getThree, buildMaterial, bindPose } from './three-helper.js'
 
 class PerlinNoise {
     constructor(seed=1234) {
@@ -84,9 +84,6 @@ function generateIslandElevationWithPerlin(size,seed=42) {
 
 function bindToClient(surface,volume,elevations) {
 
-	// only run on clients, and also only create once
-	if(surface.isServer || volume.node) return
-
 	const THREE = getThree()
 
 	const geometry = new THREE.PlaneGeometry(...volume.props)
@@ -116,11 +113,15 @@ function bindToClient(surface,volume,elevations) {
 }
 
 export default function layer(sys,surface,volume) {
+	if(volume._built) return
+	volume._built = true
 	if(volume.elevations) return
 	const width = volume.props[0]
 	const height = volume.props[1]
 	const elevations = volume.elevations = volume.elevations || generateIslandElevationWithPerlin(width,height)
 	if(!surface.layers) surface.layers = []
 	surface.layers.push({elevations,width})
-	bindToClient(surface,volume,elevations)
+	if(!surface.isServer) {
+		bindToClient(surface,volume,elevations)
+	}
 }

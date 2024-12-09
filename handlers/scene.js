@@ -1,40 +1,50 @@
 
 const uuid = 'orbital/orbital-volume/scene'
 
-import { getThree } from './three.js'
+import { getThree } from './three-helper.js'
 
 //
-// build a scene - on browser only
+// handle scene related events
 //
 
-export default async function scene(sys,surface,volume={}) {
+export default async function scene(sys,surface,volume) {
 
-	// only run on clients, and also only create a scene once per surface
-	if(surface.isServer || surface.scene || surface.renderer) {
-		console.error(uuid,'some kind of duplicate or other error with scene',surface,volume)
+	// only run on clients
+	if(surface.isServer) {
+		return
+	}
+
+	// if a surface exists just update it - @todo handle obliterate
+	// requestAnimationFrame() is called elsewhere and this is called for us when it is time to repaint
+	if(surface.renderer) {
+		if(surface.controls) {
+			surface.controls.update()
+		}
+		surface.renderer.render(surface.scene,surface.camera)
 		return
 	}
 
 	// get 3js
 	const THREE = getThree()
+	if(!THREE) return
 
 	//
 	// find or build a parent dom element that the 3d view will be attached to
 	//
 
-	let node = surface.node = document.getElementById(surface.div)
-	if(!node) {
-		node = surface.node = document.createElement("div")
-		node.style = "width:100%;height:100%;padding:0px;margin:0px;position:absolute;top:0;left:0;"
-		node.id = surface.div
-		node.innerHTML = "3d view"
-		document.body.appendChild(node)
+	let div = surface.div = document.getElementById(surface.name)
+	if(!div) {
+		div = surface.div = document.createElement("div")
+		div.style = "width:100%;height:100%;padding:0px;margin:0px;position:absolute;top:0;left:0;"
+		div.id = surface.name
+		div.innerHTML = "3d view"
+		document.body.appendChild(div)
 	}
-	const width = node.clientWidth
-	const height = node.clientHeight
+	const width = div.clientWidth
+	const height = div.clientHeight
 
 	//
-	// build renderer with its own dom element that will be appended to the node
+	// build renderer with its own dom element that will be appended to the div
 	//
 
 	const renderer = surface.renderer = new THREE.WebGLRenderer({
@@ -46,6 +56,11 @@ export default async function scene(sys,surface,volume={}) {
 	renderer.setClearColor(volume.background || 0xfff0ff, 0);
 	renderer.setSize(width,height)
 	renderer.setPixelRatio(window.devicePixelRatio)
+
+	//
+	// nicer rendering - off for now due to alpha transparency desires
+	//
+
 	if(false) {
 		surface.renderer.outputColorSpace = THREE.SRGBColorSpace
 		surface.renderer.outputEncoding = THREE.sRGBEncoding
@@ -53,7 +68,7 @@ export default async function scene(sys,surface,volume={}) {
 		surface.renderer.shadowMap.enabled = false
 		surface.renderer.useLegacyLights = false
 	}
-	node.append(renderer.domElement)
+	div.append(renderer.domElement)
 
 	//
 	// build a 3js scene node which is mandatory
@@ -93,7 +108,7 @@ export default async function scene(sys,surface,volume={}) {
 	scene.add(camera)
 
 	let controls = null
-	if(camera && volume.controls) {
+	if(camera) {
 		const OrbitControls = (await import('three/addons/controls/OrbitControls.js')).OrbitControls
 		controls = surface.controls = new OrbitControls(camera, renderer.domElement)
 		controls.target = new THREE.Vector3(...cameraTarget)
@@ -124,15 +139,15 @@ export default async function scene(sys,surface,volume={}) {
 	// attach this all to the display
 	//
 
-	node.appendChild(renderer.domElement)
+	div.appendChild(renderer.domElement)
 
 	//
 	// a resize observer leveraging https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
 	//
 
 	const resized = () => {
-		surface.width = node.clientWidth
-		surface.height = node.clientHeight
+		surface.width = div.clientWidth
+		surface.height = div.clientHeight
 		camera.aspect = width / height
 		camera.updateProjectionMatrix()
 		renderer.setSize(width,height)
@@ -140,14 +155,7 @@ export default async function scene(sys,surface,volume={}) {
 		renderer.render(scene,camera)
 	}
 
-	new ResizeObserver(resized).observe(node)
-
-	// requestAnimationFrame() is called elsewhere and this is called for us when it is time to repaint
-	surface.update = () => {
-		if(controls)controls.update()
-		renderer.render(scene, camera)
-	}
-
+	new ResizeObserver(resized).observe(div)
 }
 
 
