@@ -6,6 +6,8 @@ import { copy_bones } from './load-helpers/copy-bones.js'
 import { retarget_vrm } from './load-helpers/retarget-vrm.js'
 import { misc_cleanup } from './load-helpers/misc-cleanup.js'
 
+const uuid = 'orbital/orbital-volume/load-helper/file'
+
 async function getLoader() {
 
 	const GLTFLoader = (await import('three/addons/loaders/GLTFLoader.js')).GLTFLoader
@@ -135,7 +137,7 @@ export default async function animated(sys,surface,volume,changes) {
 	const gltf = await loader.loadAsync(volume.url)
 
 	if(!gltf || !gltf.scene) {
-		console.error('volume::gltf: cannot load',volume.url)
+		console.error(uuid,'cannot load',volume.url)
 		return
 	}
 

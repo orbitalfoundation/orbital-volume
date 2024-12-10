@@ -2,7 +2,7 @@
 function _cleanup(key,clip,node) {
 
 	if(!key || !clip || !clip.tracks || !node) {
-		console.error("bad clip",key,clip)
+		console.error("orbital-volume/load/misc-cleanup - bad clip",key,clip,node)
 		return
 	}
 
