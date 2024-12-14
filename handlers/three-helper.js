@@ -2,9 +2,11 @@
 const isServer = (typeof window === 'undefined') ? true : false
 
 globalThis.THREE = null
+let textureLoader = null
 
 if(isServer == false) {
 	globalThis.THREE = await import('three')
+	textureLoader = new THREE.TextureLoader()
 }
 
 ///
@@ -20,6 +22,16 @@ export function getThree() {
 ///
 
 export function buildMaterial(props = null) {
+
+	if(!THREE || !textureLoader || !props || typeof props !== 'object') return
+
+	if(props.textureURL) {
+		props.map = textureLoader.load( props.textureURL )
+	}
+	if(props.displacementURL) {
+		props.displacementMap = props.bumpMap = textureLoader.load( props.displacementURL );
+	}
+
 	switch(props ? props.kind : 'fallback') {
 		case 'fallback':
 			return new THREE.MeshPhongMaterial({ color: 0xcccccc });

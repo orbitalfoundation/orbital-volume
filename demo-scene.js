@@ -1,6 +1,6 @@
 
 // @todo for some reason /+esm does something very strange with import maps - they stop working!
-import sys from 'https://cdn.jsdelivr.net/npm/orbital-sys@1.0.8/src/sys.js'
+import sys from 'https://cdn.jsdelivr.net/npm/orbital-sys@latest/src/sys.js'
 
 //
 // fetch volume itself - providing 3d services - and then some volume rendered 3d elements
