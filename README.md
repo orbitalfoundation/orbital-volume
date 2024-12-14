@@ -17,6 +17,24 @@ This comes out of earlier efforts which are still visible at:
 - https://github.com/anselm/blox2
 - https://github.com/anselm/blox3
 
+## Design Tensions to resolve still:
+
+This service is experimental, and is testing ways to decouple declarations from code, to allow for more scalig. The philosophy is generally to be reactive, where the programmer focuses just on declaring state the way they want.
+
+This service is also built on top of 'orbital-sys', an experimental pub/sub messaging framework that provides the support for manifests (discussed below), and helps decouple services from each other. However there are some design tensions that are still unresolved - and are marked in the code. These are the main issues still being explored:
+
+- UUIDs. It's highly convenient to have uuids on objects. It's arguable that orbital-sys should inject these even. There are some hacks here, I generate a uuid if needed, but this still needs a more aggressive study. UUDS also arguably should be non collidant and global, even over networks, perhaps with a formal path naming scheme.
+
+- Server/Client. Volume does provide 3d rendering on the client, but server side also needs some of the services here. Right now each file has to do a bit of work to detect if it is client or server.
+
+- Queries. The pub/sub architecture does allow global event handlers to observe most activity, and this is a way to register, or build up a database, of 3d related objects for later queries, but it puts some burden on volume to do this work. Volume does need to do spatial indexing and navigation (see the sparse voxel octree) but it is still arguable that there could be a separate dedicated 3d spatial indexing service unrelated to volume. Arguably a separate database could be used.
+
+- Binding. There are process memory isolation boundaries being broken by volume. Right now I bind properties such as position and orientation into passed objects. Should the Volume service be treated as a shared memory concept? Conceptually individual agents could be process isolated but Volume could effectively be a kind of kernel service.
+
+- Authoritative instances. Right now I will declare a scene element - such as a camera - and pass it to sys, but then make changes to that scene element - leveraging an idea of binding (see above). The message passing scheme doesn't inherently have a concept of an authoritative instance of a state object. Right now we allow back-writing into objects, as if they were the real or canonical instance of state. But a caller could pass an arbitrary datagram with some state in it, and a uuid, and want to apply that as a change overtop of an existing object. There's no reason why any given datagram is authoritative and that needs study. A flag could be used, or perhaps everybody should always pass datagrams rather than ever binding to some kind of authoritative shared state instance.
+
+- Updates/Events. For Volume events performance is critical. It's debatable if volume objects should receive direct messages or not - and how that is rationalized in a thread isolation design.
+
 ## Notation
 
 Typically objects are declared as an 'entity' and decorated with a 'volume' component that describes one 3d representation associated with the entity in general. See demo-scene.js for an example of this.

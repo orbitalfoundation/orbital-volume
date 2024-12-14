@@ -108,3 +108,27 @@ export function bindPose(scope) {
 
 }
 
+///
+/// remove an object
+///
+
+export function removeNode(node) {
+
+    // if (!(node instanceof THREE.Object3D)) return
+
+	node.removeFromParent()
+	node.parent = null
+
+    if (node.geometry) node.geometry.dispose();
+    node.geometry = null
+
+    if (node.material) {
+        if (node.material instanceof Array) {
+            node.material.forEach(material => material.dispose());
+        } else {
+            node.material.dispose();
+        }
+    }
+    node.material = null
+}
+

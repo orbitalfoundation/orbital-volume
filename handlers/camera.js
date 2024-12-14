@@ -1,17 +1,34 @@
 
 const uuid = 'orbital/orbital-volume/camera'
 
-import { getThree, buildMaterial, bindPose } from './three-helper.js'
+import { getThree, buildMaterial, bindPose, removeNode } from './three-helper.js'
 
-export default async function camera(sys,surface,volume) {
+export default async function camera(sys,surface,entity,delta) {
 
-	if(volume.built) {
+	// client side only
+	const THREE = getThree()
+	if(!THREE) return
+
+	const volume = entity.volume
+
+	// obliterate?
+	if(entity.obliterate) {
+		if(volume.controls) {
+			volume.controls.dispose()
+			volume.controls.enabled = false
+			volume.controls = null
+		}
+		return
+	}
+
+	// for now only build once and update otherwise
+	if(volume._built) {
 		if(volume.controls) {
 			volume.controls.update()
 		}
 		return
 	}
-	volume.built = true
+	volume._built = true
 
 	// a surface has only one camera for now
 	const camera = surface.camera
@@ -39,6 +56,7 @@ export default async function camera(sys,surface,volume) {
 		const OrbitControls = (await import('three/addons/controls/OrbitControls.js')).OrbitControls
 		let controls = volume.controls = new OrbitControls(camera, surface.renderer.domElement)
 
+		controls.enabled = true
 		controls.target = camera.love ? camera.love : new THREE.Vector3(0,0,0)
 		controls.enableZoom = true
 		controls.enableRotate = true

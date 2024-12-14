@@ -1,4 +1,4 @@
-import { getThree, buildMaterial, bindPose } from './three-helper.js'
+import { getThree, buildMaterial, bindPose, removeNode } from './three-helper.js'
 
 import { load_animations } from './load-helpers/load-animations.js'
 import { morph_targets } from './load-helpers/morph-targets.js'
@@ -97,10 +97,19 @@ function _update(volume,time,delta) {
 	volume.mixer.update(delta/1000)
 }
 
-export default async function animated(sys,surface,volume,changes) {
+export default async function animated(sys,surface,entity,delta) {
 
-	// client only
-	if(surface.isServer) return
+	// I use this approach because this code can run on a server and needs to exit gracefully
+	const THREE = getThree()
+	if(!THREE) return
+
+	const volume = entity.volume
+
+	// obliterate?
+	if(entity.obliterate) {
+		removeNode(volume.node)
+		return
+	}
 
 	// update?
 	// @todo detect change to requested animation to play
@@ -115,10 +124,6 @@ export default async function animated(sys,surface,volume,changes) {
 		return
 	}
 	volume._built = true
-
-	// I use this approach because this code can run on a server and needs to exit gracefully
-	const THREE = getThree()
-	if(!THREE) return
 
 	const loader = surface.loader || (surface.loader = await getLoader())
 
@@ -162,7 +167,11 @@ export default async function animated(sys,surface,volume,changes) {
 	bindPose(volume)
 
 	// add to scene
-	surface.scene.add(volume.node)
+	if(entity.parent && entity.parent.volume && entity.parent.volume.node) {
+		entity.parent.volume.node.add(volume.node)
+	} else {
+		surface.scene.add(volume.node)
+	}
 
 	// remove placeholder
 	if(temp) {

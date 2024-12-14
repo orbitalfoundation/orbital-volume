@@ -7,10 +7,37 @@ import { getThree } from './three-helper.js'
 // handle scene related events such as finding a rendering div and setting up a camera
 //
 
-export default async function scene(sys,surface,volume) {
+export default async function scene(sys,surface,entity,delta) {
 
-	// only run on clients
-	if(surface.isServer) {
+	// get 3js
+	const THREE = getThree()
+	if(!THREE) return
+
+	const volume = entity.volume
+
+	if(entity.obliterate) {
+
+		if(surface.scene) {
+			surface.scene.children.forEach( removeObject )
+			surface.scene.clear()
+			surface.scene = null
+		}
+
+		if(surface.resizeObserver) {
+			surface.resizeObserver.disconnect()
+			surface.resizeObserver = null
+		}
+
+		if(surface.renderer) {
+			surface.renderer.renderLists.dispose();
+		    surface.renderer.forceContextLoss();
+		    surface.renderer.context = null;
+		    surface.renderer.domElement = null;
+		    surface.renderer.dispose();
+		    surface.renderer = null;
+		}
+
+		surface.camera = null
 		return
 	}
 
@@ -21,9 +48,9 @@ export default async function scene(sys,surface,volume) {
 		return
 	}
 
-	// get 3js
-	const THREE = getThree()
-	if(!THREE) return
+	// only run once
+	if(surface._built) return
+	surface._built = true
 
 	//
 	// find or build a parent dom element that the 3d view will be attached to
@@ -125,6 +152,6 @@ export default async function scene(sys,surface,volume) {
 		}
 	}
 
-	new ResizeObserver(resized).observe(div)
+	surface.resizeObserver = new ResizeObserver(resized).observe(div)
 }
 

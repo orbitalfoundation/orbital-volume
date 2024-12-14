@@ -1,13 +1,22 @@
 
-import { getThree, buildMaterial, bindPose } from './three-helper.js'
+import { getThree, buildMaterial, bindPose, removeNode } from './three-helper.js'
 
-export default function prim(sys,surface,volume,isServer) {
+export default function prim(sys,surface,entity,delta) {
 
-	// only run on clients, and also only create once
-	if(isServer || volume._built) return
-	volume._built = true
-
+	// client side only
 	const THREE = getThree()
+	if(!THREE) return
+
+	const volume = entity.volume
+
+	if(entity.obliterate) {
+		removeNode(volume.node)
+		return
+	}
+
+	// only update once for now
+	if(volume._built) return
+	volume._built = true
 
 	const material = buildMaterial(volume.material)
 
@@ -17,34 +26,34 @@ export default function prim(sys,surface,volume,isServer) {
 		case 'cube':
 		case 'box':
 			geometry = new THREE.BoxGeometry(1,1,1);
-			volume.node = new THREE.Mesh(geometry, material);
-			surface.scene.add(volume.node)
 			break;
 
 		case 'sphere':
 			geometry = new THREE.SphereGeometry(1, 32, 32);
-			volume.node = new THREE.Mesh(geometry, material);
-			surface.scene.add(volume.node)
 			break;
 
 		case 'cylinder':
 			if(!volume.props) throw "Need Props"
 			geometry = new THREE.CylinderGeometry(...volume.props);
-			volume.node = new THREE.Mesh(geometry, material);
-			surface.scene.add(volume.node)
 			break;
 
 		case 'plane':
 			if(!volume.props) throw "Need Props"
 			geometry = new THREE.PlaneGeometry(...volume.props);
-			volume.node = new THREE.Mesh(geometry, material);
-			surface.scene.add(volume.node)
 			break;
 
 		default:
 			return
 	}
 
-	bindPose(volume)
+	if(geometry) {
+		volume.node = new THREE.Mesh(geometry, material);
+		if(entity.parent && entity.parent.volume && entity.parent.volume.node) {
+			entity.parent.volume.node.add(volume.node)
+		} else {
+			surface.scene.add(volume.node)
+		}
+		bindPose(volume)
+	}
 
 }

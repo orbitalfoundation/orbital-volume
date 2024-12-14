@@ -1,5 +1,5 @@
 
-import { getThree, buildMaterial, bindPose } from './three-helper.js'
+import { getThree, buildMaterial, bindPose, removeNode } from './three-helper.js'
 
 class PerlinNoise {
     constructor(seed=1234) {
@@ -113,9 +113,18 @@ function bindToClient(surface,volume,elevations) {
 
 }
 
-export default function layer(sys,surface,volume) {
+export default function layer(sys,surface,entity,delta) {
+
+	const volume = entity.volume
+
+	if(entity.obliterate) {
+		removeNode(volume.node)
+		return
+	}
+
 	if(volume._built) return
 	volume._built = true
+
 	if(volume.elevations || !surface.scene) return
 	const width = volume.props[0]
 	const height = volume.props[1]

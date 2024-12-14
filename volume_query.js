@@ -14,11 +14,13 @@ export default function query(props) {
 
 	const entities = this._entities
 
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
 	// layer queries (into bitmaps) are performed separately / disjointly with any other query
 	// @todo this needs to be generalized
 	// @todo it is absurdly expensive to find some random locations in this way - improve
 	//
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	if(props.hasOwnProperty('minElevation')) {
 
@@ -86,11 +88,13 @@ export default function query(props) {
 		return positions
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
 	// for non layer searches optionally pre-filter candidates
 	// @todo note it is expensive to do this; hashing of components would help
 	// @todo note this also duplicates some of the query capabilities of other components
 	//
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	const query_matches = (args,candidate) => {
 		for (const [key,val] of Object.entries(args)) {
@@ -119,9 +123,11 @@ export default function query(props) {
 		return []
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
 	// return all candidates if no other filters
 	//
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	if(!props.position) {
 		candidates.forEach(entity=>{
@@ -129,10 +135,12 @@ export default function query(props) {
 		})
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
-	// else return nearest match only
+	// else explicitly look at position and return nearest spatial match only
 	// @todo note a real spatial hash would be less costly
 	//
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	else {
 
@@ -142,9 +150,9 @@ export default function query(props) {
 
 		candidates.forEach(entity => {
 			const distance = Math.sqrt(
-				Math.pow(position.x - entity.position.x, 2) +
-				Math.pow(position.y - entity.position.y, 2) +
-				Math.pow(position.z - entity.position.z, 2)
+				Math.pow(position.x - entity.volume.pose.position.x, 2) +
+				Math.pow(position.y - entity.volume.pose.position.y, 2) +
+				Math.pow(position.z - entity.volume.pose.position.z, 2)
 			)
 			if (distance < minDistance) {
 				minDistance = distance

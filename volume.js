@@ -21,6 +21,7 @@ const handlers = {
 
 	sphere:prim,
 	cube:prim,
+	box:prim,
 	plane:prim,
 	cylinder:prim,
 }
@@ -35,20 +36,44 @@ async function resolve(blob,sys) {
 	sys.volume = this
 
 	// volume update helper
-	const update = async (entity,changes)=> {
+	const update = async (entity,delta)=> {
 
-		let handler = handlers[entity.volume.geometry]
-		if(!handler) return
+		// a change request or a new object
+		if(delta) {
+			if(!delta.uuid) {
+				// for now grant a new uuid
+				delta.uuid = delta._metadata ? `${blob._metadata.key}` : `volume-${id++}`
+				console.log(uuid,'granted new uuid',delta.uuid)
+			}
+			entity = this._entities[delta.uuid]
+			if(!entity) {
+				entity = this._entities[delta.uuid] = delta
+				delta = null
+			}
+		}
 
-		// volumes always have a surface
+		// find handler for the type
+		const handler = handlers[entity.volume.geometry]
+		if(!handler) {
+			console.error(uuid,'no handler for',entity)
+			return
+		}
+
+		// volumes always are granted a surface
 		const name = entity.volume.surface || 'volume001'
 		const surface = this._surfaces[name] || (this._surfaces[name] = {name,isServer})
 
 		// update
-		await handler(sys,surface,entity.volume,changes ? changes.volume : null,entity,changes)
+		await handler(sys,surface,entity,delta)
+
+		// remove?
+		if(entity.obliterate && entity.uuid) {
+			delete this._entities[uuid]
+		}
+
 	}
 
-	// react to tick - each volume can have its own update
+	// visit all volume instances on tick
 	if(blob.tick) {
 		const entities = Object.values(this._entities)
 		for(const entity of entities) {
@@ -56,25 +81,9 @@ async function resolve(blob,sys) {
 		}
 	}
 
-	// a volume arrived via message event - track it and do work on int
+	// visit one volume instance delta on explicit update request
 	if(blob.volume) {
-		// for now grant a uuid - @todo loader should do this or we should throw an error ??? finalize
-		let uuid = blob.uuid
-		if(!uuid) {
-			uuid = blob.uuid = blob._metadata ? `${blob._metadata.key}` : `volume-${id++}`
-			console.log("granting volume uuid",uuid)
-		}
-		// find previous volume if any and update changes
-		let entity = this._entities[uuid]
-		if(!entity) {
-			entity = this._entities[uuid] = blob
-		}
-		// apply changes
-		await update(entity,blob)
-		// delete if desired
-		if(blob.obliterate) {
-			delete this._entities[uuid]
-		}
+		await update(null,blob)
 	}
 }
 
