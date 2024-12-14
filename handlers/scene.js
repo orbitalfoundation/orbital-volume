@@ -4,7 +4,7 @@ const uuid = 'orbital/orbital-volume/scene'
 import { getThree } from './three-helper.js'
 
 //
-// handle scene related events
+// handle scene related events such as finding a rendering div and setting up a camera
 //
 
 export default async function scene(sys,surface,volume) {
@@ -17,9 +17,6 @@ export default async function scene(sys,surface,volume) {
 	// if a surface exists just update it - @todo handle obliterate
 	// requestAnimationFrame() is called elsewhere and this is called for us when it is time to repaint
 	if(surface.renderer) {
-		if(surface.controls) {
-			surface.controls.update()
-		}
 		surface.renderer.render(surface.scene,surface.camera)
 		return
 	}
@@ -37,7 +34,6 @@ export default async function scene(sys,surface,volume) {
 		div = surface.div = document.createElement("div")
 		div.style = "width:100%;height:100%;padding:0px;margin:0px;position:absolute;top:0;left:0;"
 		div.id = surface.name
-		div.innerHTML = "3d view"
 		document.body.appendChild(div)
 	}
 	const width = div.clientWidth
@@ -89,7 +85,7 @@ export default async function scene(sys,surface,volume) {
 	}
 
 	//
-	// build a default camera that can be attached to a controllable camera proxy later
+	// always have a default camera - can be overridden
 	//
 
 	const fov = volume.aperture || 35
@@ -97,34 +93,7 @@ export default async function scene(sys,surface,volume) {
 	const far = volume.far || 100
 	const aspect = width / height
 	const camera = surface.camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
-
-	const cameraPosition = volume.cameraPosition || [10,10,10]
-	const cameraTarget = volume.cameraTarget || [0,0,0]
-	const cameraMin = volume.cameraMin || 1
-	const cameraMax = volume.cameraMax || 1000
-	camera.position.set(...cameraPosition)
-	camera.lookAt(new THREE.Vector3(...cameraTarget))
-	camera.cameraTarget = surface.cameraTarget = cameraTarget // remember this for now
 	scene.add(camera)
-
-	let controls = null
-	if(camera) {
-		const OrbitControls = (await import('three/addons/controls/OrbitControls.js')).OrbitControls
-		controls = surface.controls = new OrbitControls(camera, renderer.domElement)
-		controls.target = new THREE.Vector3(...cameraTarget)
-		controls.enableZoom = true
-		controls.enableRotate = true
-		controls.enableDamping = true
-		controls.enablePan = true
-		controls.autoRotateSpeed = 0
-		controls.autoRotate = false
-		controls.dampingFactor = 0.05
-		controls.screenSpacePanning = false
-		controls.minDistance = cameraMin
-		controls.maxDistance = cameraMax
-		//controls.maxPolarAngle = Math.PI / 2
-		controls.update()
-	}
 
 	//
 	// helpers
@@ -148,17 +117,14 @@ export default async function scene(sys,surface,volume) {
 	const resized = () => {
 		surface.width = div.clientWidth
 		surface.height = div.clientHeight
-		camera.aspect = width / height
-		camera.updateProjectionMatrix()
-		renderer.setSize(width,height)
-		if(controls) controls.update()
-		renderer.render(scene,camera)
+		if(surface.camera && surface.scene) {
+			surface.camera.aspect = width / height
+			surface.camera.updateProjectionMatrix()
+			renderer.setSize(width,height)
+			renderer.render(surface.scene,surface.camera)
+		}
 	}
 
 	new ResizeObserver(resized).observe(div)
 }
-
-
-
-
 

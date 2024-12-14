@@ -106,6 +106,7 @@ function bindToClient(surface,volume,elevations) {
 	// adjust plane to represent the extent rather than using default centering, also rotate them flat
 	volume.node = new THREE.Group()
 	volume.node.add(child)
+	surface.scene.add(volume.node)
 
 	// rewrite the hopefully durable volume handle with live pose state; for ease of use
 	bindPose(volume)
@@ -115,7 +116,7 @@ function bindToClient(surface,volume,elevations) {
 export default function layer(sys,surface,volume) {
 	if(volume._built) return
 	volume._built = true
-	if(volume.elevations) return
+	if(volume.elevations || !surface.scene) return
 	const width = volume.props[0]
 	const height = volume.props[1]
 	const elevations = volume.elevations = volume.elevations || generateIslandElevationWithPerlin(width,height)

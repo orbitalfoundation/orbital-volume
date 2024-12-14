@@ -1,7 +1,7 @@
 {
   "name": "orbital-volume",
-  "version": "1.1.0",
-  "description": "3d graphics wrapper for orbital",
+  "version": "1.1.1",
+  "description": "3d graphics shim around threejs",
   "main": "volume.js",
   "scripts": {
   },

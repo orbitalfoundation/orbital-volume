@@ -6,17 +6,22 @@ See a demo at https://orbitalfoundation.github.io/orbital-volume/
 
 A 3d helper service
 
-	- provides a declarative shim on top of https://threejs.org
+- provides a declarative shim on top of https://threejs.org
+- uses a data driven approach where it observes events and reacts to them on top of https://github.com/orbitalfoundation/orbital-sys
+- provides basic support for 3d scenes, cameras, lights, 3d model loading
+- provides support for loading rigged human animated models with visemes using RPM, VRM, Reallusion
 
-	- uses a data driven approach where it observes events and reacts to them
+This comes out of earlier efforts which are still visible at:
 
-	- provides basic support for 3d scenes, cameras, lights, 3d model loading
+- https://github.com/anselm/blox
+- https://github.com/anselm/blox2
+- https://github.com/anselm/blox3
 
-	- provides support for loading rigged human animated models with visemes using RPM, VRM, Reallusion
+## Notation
 
-	- see https://github.com/orbitalfoundation
+Typically objects are declared as an 'entity' and decorated with a 'volume' component that describes one 3d representation associated with the entity in general. See demo-scene.js for an example of this.
 
-	- see demo at https://orbitalfoundation.github.io/orbital-volume
+I haven't documented the notation specifically here yet - you will have to review volume.js itself or look at examples.
 
 #  Understanding Avatars, rigging, art pipelines, tools and resources
 

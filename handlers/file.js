@@ -11,19 +11,21 @@ const uuid = 'orbital/orbital-volume/load-helper/file'
 async function getLoader() {
 
 	const GLTFLoader = (await import('three/addons/loaders/GLTFLoader.js')).GLTFLoader
-	const gltfLoader = new GLTFLoader()
+	const loader = new GLTFLoader()
 
-return gltfLoader
+loader.setCrossOrigin('anonymous')
+
+return loader
 
 	const DRACOLoader = (await import('three/addons/loaders/DRACOLoader.js')).DRACOLoader
 	const dracoLoader = new DRACOLoader()
 	//dracoLoader.setDecoderPath("@todo")
-	gltfLoader.setDRACOLoader(dracoLoader)
+	loader.setDRACOLoader(dracoLoader)
 
 	const KTX2Loader = (await import('three/addons/loaders/KTX2Loader.js')).KTX2Loader
 	const ktx2Loader = new KTX2Loader()
 	//ktx2Loader.setTranscoderPath(import.meta.url+"@todo") 
-	gltfLoader.setKTX2Loader(ktx2Loader)
+	loader.setKTX2Loader(ktx2Loader)
 
 	const MeshOptDecoder = (await import('three/addons/loaders/MeshOptDecoder.js')).MeshOptDecoder
 	loader.setMeshoptDecoder(MeshOptDecoder)
@@ -124,10 +126,13 @@ export default async function animated(sys,surface,volume,changes) {
 	// Placeholder @todo switch below to be async?
 	//
 
-	const geometry = new THREE.SphereGeometry( 1, 32, 16 )
-	const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } )
-	const sphere = new THREE.Mesh( geometry, material )
-	surface.scene.add( sphere )
+	let temp = null
+	if(false) {
+		const geometry = new THREE.SphereGeometry( 0.1, 32, 16 )
+		const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } )
+		const temp = new THREE.Mesh( geometry, material )
+		surface.scene.add( temp )
+	}
 
 	//
 	// Real geometry
@@ -160,7 +165,9 @@ export default async function animated(sys,surface,volume,changes) {
 	surface.scene.add(volume.node)
 
 	// remove placeholder
-	surface.scene.remove( sphere )
+	if(temp) {
+		surface.scene.remove( sphere )
+	}
 
 	// load animations - merge in any from the main gltf also
 	const clumps = volume.clumps = await load_animations(loader,volume,gltf.animations)

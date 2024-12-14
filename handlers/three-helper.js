@@ -21,15 +21,20 @@ export function getThree() {
 
 export function buildMaterial(props = null) {
 	switch(props ? props.kind : 'fallback') {
-		case 'basic':
-			return new THREE.MeshBasicMaterial(props)
 		case 'fallback':
 			return new THREE.MeshPhongMaterial({ color: 0xcccccc });
+		case 'basic':
+			props = { ... props }
+			delete props.kind
+			return new THREE.MeshBasicMaterial(props)
 		default:
+			props = { ... props }
+			delete props.kind
 			return new THREE.MeshPhongMaterial(props)
 			break
 	}
-}	
+}
+
 
 /**
 
@@ -53,23 +58,53 @@ export function bindPose(scope) {
 	const node = scope.node
 	if(!node) return
 
+	// given [0,1,2] or { x:0, y:1, z:2 } return [0,1,2]
+	const unroll = (xyz) => { return Array.isArray(xyz) ? xyz : Object.values(xyz) }
+
+	// pull values from outside manifests - can be arrays or objects
 	let pose = scope.pose
 	if(!pose) {
-		pose = pose = {}
-	} else {
-		if(pose.position) node.position.set(...(Array.isArray(pose.position) ? pose.position : Object.values(pose.position) ) )
-		if(pose.rotation) node.rotation.set(...(Array.isArray(pose.rotation) ? pose.rotation : Object.values(pose.rotation) ) )
-		if(pose.scale) node.scale.set(...(Array.isArray(pose.scale) ? pose.scale : Object.values(pose.scale) ) )
-		if(pose.quaternion) node.quaternion.set(...(Array.isArray(pose.quaternion) ? pose.quaternion : Object.values(pose.quaternion) ) )
-		if(pose.lookat) node.lookAt(...(Array.isArray(pose.lookat) ? pose.lookat : Object.values(pose.lookat) ) )
+		pose = scope.pose = {}
 	}
 
-	pose.position = node.position
-	pose.rotation = node.rotation
-	pose.scale = node.scale
-	pose.quaternion = node.quaternion
-	pose.matrix = node.matrix
-	pose.matrixWorld = node.matrixWorld
-	pose.lookat = node.lookAt
+	// backwards support
+	if(scope.xyz) pose.position = scope.xyz
+	if(scope.ypr) pose.rotation = scope.ypr
+	if(scope.whd) pose.scale = scope.whd
+
+	// stuff this into every object as a way to set a target - avoiding using the reserved term 'target'
+	Object.defineProperty(node, 'love', {
+		value: new THREE.Vector3(),
+		enumerable: true,
+		configurable: true
+	});
+
+	// copy from manifest to node
+	if(true) {
+		if(pose.position) node.position.set(...unroll(pose.position) )
+		if(pose.rotation) node.rotation.set(...unroll(pose.rotation) )
+		if(pose.scale) node.scale.set(...unroll(pose.scale) )
+		if(pose.quaternion) node.quaternion.set(...unroll(pose.quaternion) )
+		if(pose.lookat) node.lookAt(...unroll(pose.lookat) )
+		if(pose.love) node.love.set(...unroll(pose.love) )
+	}
+
+	// rewrite into manifest ... allows direct changes to live geometry ...
+	// @todo there are some risks here; it may break expectations around publishing datagrams and original state
+	if(true) {
+		pose.position = node.position
+		pose.rotation = node.rotation
+		pose.scale = node.scale
+		pose.quaternion = node.quaternion
+		pose.lookat = node.lookAt
+		pose.love = node.love
+		pose.matrix = node.matrix
+		pose.matrixWorld = node.matrixWorld
+	}
+
+	// force update for good luck
+	node.updateMatrix()
+	node.matrixWorldNeedsUpdate = true
 
 }
+

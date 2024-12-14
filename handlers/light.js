@@ -12,31 +12,36 @@ export default async function light(sys,surface,volume,isServer) {
 	const material = buildMaterial(volume.material)
 
 	switch(volume.light) {
+	case 'pointLight':
 	case 'point':
 		volume.node = new THREE.PointLight(volume.color, volume.intensity, volume.distance, volume.decay)
-		volume.node.add( new THREE.Mesh(new THREE.SphereGeometry(10, 32, 32), material ) )
+//		volume.node.add( new THREE.Mesh(new THREE.SphereGeometry(10, 32, 32), material ) )
 		surface.scene.add(volume.node)
 		break
 
+	case 'ambientLight':
 	case 'ambient':
 		volume.node = new THREE.AmbientLight(volume.color, volume.intensity)
-		volume.node.add( new THREE.Mesh(new THREE.SphereGeometry(10, 32, 32), material ) )
+//		volume.node.add( new THREE.Mesh(new THREE.SphereGeometry(10, 32, 32), material ) )
 		surface.scene.add(volume.node)
 		break
 
+	case 'directionalLight':
 	case 'directional':
 		volume.node = new THREE.DirectionalLight(volume.color, volume.intensity)
-		volume.node.add( new THREE.Mesh(new THREE.SphereGeometry(10, 32, 32), material ) )
+//		volume.node.add( new THREE.Mesh(new THREE.SphereGeometry(10, 32, 32), material ) )
 		surface.scene.add(volume.node)
 		break
 
+	case 'spotLight':
 	case 'spot':
 		volume.node = new THREE.SpotLight(volume.color, volume.intensity)
-		volume.node.add( new THREE.Mesh(new THREE.CylinderGeometry(0.5, 10, 10, 8), material ) )
+//		volume.node.add( new THREE.Mesh(new THREE.CylinderGeometry(0.5, 10, 10, 8), material ) )
 		surface.scene.add(volume.node)
 		break
 
 	default:
+		console.error('orbital/orbital-volume/light - error unknown',volume)
 		return
 
 	}
