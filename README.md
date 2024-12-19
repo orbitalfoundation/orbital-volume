@@ -19,7 +19,7 @@ This comes out of earlier efforts which are still visible at:
 
 ## Design Tensions to resolve still:
 
-This service is experimental, and is testing ways to decouple declarations from code, to allow for more scalig. The philosophy is generally to be reactive, where the programmer focuses just on declaring state the way they want.
+This service is experimental, and is testing ways to decouple declarations from code. The philosophy is generally to be reactive, where the programmer focuses just on declaring state the way they want.
 
 This service is also built on top of 'orbital-sys', an experimental pub/sub messaging framework that provides the support for manifests (discussed below), and helps decouple services from each other. However there are some design tensions that are still unresolved - and are marked in the code. These are the main issues still being explored:
 
