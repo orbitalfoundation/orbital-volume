@@ -42,7 +42,7 @@ export default async function camera(sys,surface,entity,delta) {
 	volume.node = camera
 	bindPose(volume)
 
-	if(true) {
+	if(!volume.nocontrols) {
 
 		// controls are connected to camera for now
 		const cameraMin = volume.cameraMin || 1

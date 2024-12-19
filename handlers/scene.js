@@ -70,13 +70,20 @@ export default async function scene(sys,surface,entity,delta) {
 	// build renderer with its own dom element that will be appended to the div
 	//
 
+	const alpha = volume.hasOwnProperty('alpha') ? volume.alpha : false
+	const background = volume.hasOwnProperty('background') ? volume.background : 0x000000
+
+
 	const renderer = surface.renderer = new THREE.WebGLRenderer({
 		antialias: false,
 		preserveDrawingBuffer: true,
-		alpha: volume.hasOwnProperty('alpha') ? volume.alpha : false
+		alpha
 	})
 	//renderer.autoClearColor = false
-	renderer.setClearColor(volume.background || 0xfff0ff, 0);
+	if(background != 'transparent') {
+		// for alpha must not set this
+		renderer.setClearColor(background)
+	}
 	renderer.setSize(width,height)
 	renderer.setPixelRatio(window.devicePixelRatio)
 
@@ -84,7 +91,7 @@ export default async function scene(sys,surface,entity,delta) {
 	// nicer rendering - off for now due to alpha transparency desires
 	//
 
-	if(false) {
+	if(volume.prettier) {
 		surface.renderer.outputColorSpace = THREE.SRGBColorSpace
 		surface.renderer.outputEncoding = THREE.sRGBEncoding
 		surface.renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -98,7 +105,9 @@ export default async function scene(sys,surface,entity,delta) {
 	//
 
 	const scene = surface.scene = new THREE.Scene()
-	scene.background = new THREE.Color(volume.background || 0x000000)
+	if(background != 'transparent') {
+		scene.background = new THREE.Color(background)
+	}
 
 	//
 	// Default room lighting
