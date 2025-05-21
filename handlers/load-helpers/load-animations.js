@@ -1,7 +1,7 @@
 
 const uuid = 'orbital/orbital-volume/animations'
 
-import { getThree, buildMaterial, bindPose } from '../three-helper.js'
+import { getThree, buildMaterial } from '../three-helper.js'
 
 const cache = {}
 

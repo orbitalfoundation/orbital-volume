@@ -5,11 +5,11 @@ import { RPMBody2Reallusion } from './RPMBody2Reallusion.js'
 
 export function copy_bones(node,vrm=null) {
 
-	if(!node) return
-	const THREE = getThree()
-	if(!THREE) return
-
 	const bones = {}
+
+	if(!node) return bones
+	const THREE = getThree()
+	if(!THREE) return bones
 
 	// collect all bones
 	node.traverse((child) => {

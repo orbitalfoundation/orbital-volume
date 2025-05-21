@@ -1,7 +1,7 @@
 
 const uuid = 'orbital/orbital-volume/camera'
 
-import { getThree, buildMaterial, bindPose, removeNode } from './three-helper.js'
+import { getThree, buildMaterial, removeNode, poseBind } from './three-helper.js'
 
 export default async function camera(sys,surface,entity,delta) {
 
@@ -40,7 +40,7 @@ export default async function camera(sys,surface,entity,delta) {
 
 	// use the camera but also bind the volume properties to it (especially volume.target)
 	volume.node = camera
-	bindPose(volume)
+	poseBind(surface,volume)
 
 	if(!volume.nocontrols) {
 

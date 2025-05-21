@@ -56,11 +56,6 @@ const light002 = {
 	}
 }
 
-// do not export
-const animations = {
-	default: import.meta.url + "/../assets/animations/unarmed-idle.glb",
-}
-
 const cube001 = {
 	volume: {
 		geometry: 'cube',
@@ -110,15 +105,19 @@ const cylinder001 = {
 	}
 }
 
+// do not export
+const animations = {
+	default: import.meta.url + "/../assets/animations/unarmed-idle.glb",
+}
+
 const person001 = {
 	volume: {
 		geometry: 'file',
 		url: 'https://models.readyplayer.me/664956c743dbd726eefeb99b.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png',
 		animations,
 	},
-	puppet: {}
 }
 
 
-// volume will observe these events and react to them
+// volume will observe these events and react to them - building 3d views in this case
 sys(volume_system,scene001,camera001,light001,light002,cube001,sphere001,cylinder001,person001)

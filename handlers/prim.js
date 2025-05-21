@@ -1,5 +1,5 @@
 
-import { getThree, buildMaterial, bindPose, removeNode } from './three-helper.js'
+import { getThree, buildMaterial, removeNode, poseBind, poseUpdate } from './three-helper.js'
 
 export default function prim(sys,surface,entity,delta) {
 
@@ -14,9 +14,18 @@ export default function prim(sys,surface,entity,delta) {
 		return
 	}
 
-	// only update once for now
-	if(volume._built) return
+	// update?
+	if(volume._built) {
+		poseUpdate(surface,volume)
+		return
+	}
 	volume._built = true
+
+	// in the case of multiple instances may avoid building geometry
+	if(volume.instances) {
+		poseBind(surface,volume)
+		if(volume.node) return
+	}
 
 	const material = buildMaterial(volume.material)
 
@@ -47,13 +56,9 @@ export default function prim(sys,surface,entity,delta) {
 	}
 
 	if(geometry) {
-		volume.node = new THREE.Mesh(geometry, material);
-		if(entity.parent && entity.parent.volume && entity.parent.volume.node) {
-			entity.parent.volume.node.add(volume.node)
-		} else {
-			surface.scene.add(volume.node)
-		}
-		bindPose(volume)
+		const node = volume.node = new THREE.Mesh(geometry, material)
+		poseBind(surface,volume,node)
 	}
 
 }
+

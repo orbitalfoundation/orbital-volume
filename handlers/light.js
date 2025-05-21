@@ -1,5 +1,5 @@
 
-import { getThree, buildMaterial, bindPose, removeNode } from './three-helper.js'
+import { getThree, buildMaterial, removeNode, poseBind } from './three-helper.js'
 
 export default async function light(sys,surface,entity,delta) {
 
@@ -24,25 +24,21 @@ export default async function light(sys,surface,entity,delta) {
 	case 'point':
 		// @todo would like to tidy up props under say volume.light = {} 
 		volume.node = new THREE.PointLight(volume.color, volume.intensity, volume.distance, volume.decay)
-		surface.scene.add(volume.node)
 		break
 
 	case 'ambientLight':
 	case 'ambient':
 		volume.node = new THREE.AmbientLight(volume.color, volume.intensity)
-		surface.scene.add(volume.node)
 		break
 
 	case 'directionalLight':
 	case 'directional':
 		volume.node = new THREE.DirectionalLight(volume.color, volume.intensity)
-		surface.scene.add(volume.node)
 		break
 
 	case 'spotLight':
 	case 'spot':
 		volume.node = new THREE.SpotLight(volume.color, volume.intensity)
-		surface.scene.add(volume.node)
 		break
 
 	default:
@@ -51,7 +47,7 @@ export default async function light(sys,surface,entity,delta) {
 
 	}
 
-	// rewrite the hopefully durable volume handle with live pose state; for ease of use
-	bindPose(volume)
+	// live binding
+	poseBind(surface,volume)
 
 }

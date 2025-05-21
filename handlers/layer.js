@@ -1,5 +1,5 @@
 
-import { getThree, buildMaterial, bindPose, removeNode } from './three-helper.js'
+import { getThree, buildMaterial, removeNode, poseBind } from './three-helper.js'
 
 class PerlinNoise {
     constructor(seed=1234) {
@@ -82,7 +82,7 @@ function generateIslandElevationWithPerlin(size,seed=42) {
 	return data
 }
 
-function bindToClient(surface,volume,elevations) {
+function generatePlane(volume,elevations) {
 
 	const THREE = getThree()
 
@@ -103,14 +103,8 @@ function bindToClient(surface,volume,elevations) {
 	child.position.x += volume.props[0] / 2 
 	child.position.z += volume.props[1] / 2 
 
-	// adjust plane to represent the extent rather than using default centering, also rotate them flat
 	volume.node = new THREE.Group()
 	volume.node.add(child)
-	surface.scene.add(volume.node)
-
-	// rewrite the hopefully durable volume handle with live pose state; for ease of use
-	bindPose(volume)
-
 }
 
 export default function layer(sys,surface,entity,delta) {
@@ -132,6 +126,7 @@ export default function layer(sys,surface,entity,delta) {
 	if(!surface.layers) surface.layers = []
 	surface.layers.push({elevations,width})
 	if(!surface.isServer) {
-		bindToClient(surface,volume,elevations)
+		generatePlane(volume,elevations)
+		poseBind(surface,volume)
 	}
 }

@@ -7,7 +7,7 @@ import { getThree } from './three-helper.js'
 // handle scene related events such as finding a rendering div and setting up a camera and updates
 //
 
-export default async function scene(sys,surface,entity,delta) {
+export default async function scene_handler(sys,surface,entity,delta) {
 
 	// get 3js
 	const THREE = getThree()

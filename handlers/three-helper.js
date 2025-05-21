@@ -48,41 +48,113 @@ export function buildMaterial(props = null) {
 }
 
 
-/**
 
-While I want to encourage a pub/sub architecture of publishing events versus direct setters...
-It is also very convenient to directly set pose information - and I want people to trust that.
-Also I do feel that both client and server modes should leverage THREE.Vector3 and other math.
+///
+/// remove an object
+///
 
-So my approach is that I rewrite exposed pose fields to be 'live' if we are on a client.
-This lets callers directly manipulate those fields, while also allowing message based transport.
-This could also be done with reactive observer proxy or javascript signal that wraps the variable.
+export function removeNode(node) {
 
-It is important to note that passed state tends to reflect durable objects - not transient values.
+    if (!node || !(node instanceof THREE.Object3D)) return
 
-Also I rewrite arrays of the form [0,1,2] into Vector3(0,1,2) or { x:0, y:1, z:2 }
+	node.removeFromParent()
+	node.parent = null
 
-*/
+    if (node.geometry) node.geometry.dispose();
+    node.geometry = null
 
+    if (node.material) {
+        if (node.material instanceof Array) {
+            node.material.forEach(material => material.dispose());
+        } else {
+            node.material.dispose();
+        }
+    }
+    node.material = null
+}
 
-export function bindPose(scope) {
+///
+/// poseBind
+///
+/// Given a volume component - directly bind to threejs
+/// This means that volume fields are 'live' where declared first.
+/// Will also unroll and rewrite triplet arrays to be {x,y,z} in place.
+///
+/// There are several risks:
+/// - breaks the sys() pub/sub pattern of separation of roles
+/// - users may make mistakes like volume.position = [1,2,3]
+///
 
-	const node = scope.node
-	if(!node) return
+export function poseBind(surface,volume,node=null) {
+
+	// find node if any
+	if(node) volume.node = node; else node = volume.node
+
+	// instancemesh tracking / registration
+	if(volume.instances && volume.url) {
+		if(!surface.groups) surface.groups={}
+		let group = surface.groups[volume.url]
+		if(!group) {
+			if(!node) {
+				// @todo i feel this is a slightly sloppy subtlety around binding
+				console.warn('volume: instancemesh bind must have first node')
+				return
+			}
+			group = surface.groups[volume.url] = {
+				members:[],
+				referencemesh: node,
+				instancemeshes: [],
+				instances: volume.instances,
+			}
+			node.traverse((child) => {
+				if(!child.isMesh) return
+				const instancedmesh = new THREE.InstancedMesh(
+					child.geometry, // .clone()
+					child.material, // .clone()
+					volume.instances
+				)
+				instancedmesh.instanceMatrix.setUsage( THREE.DynamicDrawUsage )
+				surface.scene.add(instancedmesh)
+				group.instancemeshes.push(instancedmesh)
+			})
+		}
+		group.instancemeshes.forEach(mesh=>{mesh.count=group.members.length})
+		volume.instanceindex = group.members.length
+		group.members.push(volume)
+		node = volume.node = new THREE.Group()
+	}
+
+	// must have node by now
+	if(!node) {
+		console.error('volume: bind no node')
+		return
+	}
+
+	//
+	// normal nodes are added to the scene
+	//
+
+	if(!volume.instances) {
+		//if(entity.parent && entity.parent.volume && entity.parent.volume.node) {
+		//	entity.parent.volume.node.add(volume.node)
+		//} else {
+		surface.scene.add(node)
+		//}
+	}
 
 	// given [0,1,2] or { x:0, y:1, z:2 } return [0,1,2]
 	const unroll = (xyz) => { return Array.isArray(xyz) ? xyz : Object.values(xyz) }
 
 	// pull values from outside manifests - can be arrays or objects
-	let pose = scope.pose
+	let pose = volume.pose
 	if(!pose) {
-		pose = scope.pose = {}
+		pose = volume.pose = {}
 	}
 
 	// backwards support
-	if(scope.xyz) pose.position = scope.xyz
-	if(scope.ypr) pose.rotation = scope.ypr
-	if(scope.whd) pose.scale = scope.whd
+	if(volume.xyz) pose.position = volume.xyz
+	if(volume.ypr) pose.rotation = volume.ypr
+	if(volume.whd) pose.scale = volume.whd
 
 	// stuff this into every object as a way to set a target - avoiding using the reserved term 'target'
 	Object.defineProperty(node, 'love', {
@@ -117,30 +189,50 @@ export function bindPose(scope) {
 	// force update for good luck
 	node.updateMatrix()
 	node.matrixWorldNeedsUpdate = true
-
 }
 
+const matrix = new THREE.Matrix4()
+
 ///
-/// remove an object
+/// poseUpdate
+///
+/// update pose
+/// update multiple instancing
 ///
 
-export function removeNode(node) {
+export function poseUpdate(surface,volume) {
 
-    // if (!(node instanceof THREE.Object3D)) return
+	// due to live binding nothing is needed for most volumes
+	if(!volume.instances || !volume.url) {
+		return
+	}
 
-	node.removeFromParent()
-	node.parent = null
+	// hmm
+	if(!volume.node) {
+		return
+	}
 
-    if (node.geometry) node.geometry.dispose();
-    node.geometry = null
+	// find instance binding
+	let group = surface.groups[volume.url]
+	if(!group) {
+		return
+	}
 
-    if (node.material) {
-        if (node.material instanceof Array) {
-            node.material.forEach(material => material.dispose());
-        } else {
-            node.material.dispose();
-        }
-    }
-    node.material = null
+	// update because not attached to scene
+	volume.node.updateMatrix()
+
+	// update the parts of the instanced mesh
+	group.instancemeshes.forEach(mesh=>{
+		mesh.setMatrixAt(volume.instanceindex,volume.node.matrix)
+		//mesh.setMatrixAt(volume.instanceindex,matrix)
+		mesh.instanceMatrix.needsUpdate = true
+	})
 }
 
+export function updateGroups(surface) {
+	const groups = surface.groups
+	if(!groups) return
+	groups.forEach(group=>{
+		updateGroup(surface,group.members[i])
+	})
+}

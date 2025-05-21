@@ -1,4 +1,4 @@
-import { getThree, buildMaterial, bindPose, removeNode } from './three-helper.js'
+import { getThree, buildMaterial, removeNode, poseBind, poseUpdate } from './three-helper.js'
 
 import { load_animations } from './load-helpers/load-animations.js'
 import { morph_targets } from './load-helpers/morph-targets.js'
@@ -8,12 +8,19 @@ import { misc_cleanup } from './load-helpers/misc-cleanup.js'
 
 const uuid = 'orbital/orbital-volume/load-helper/file'
 
-async function getLoader() {
+const loadCache = {}
+
+//
+// get 3js loader - cached at surface level not here
+// @todo for now the loader is conserved; unsure if that is ok
+// @todo most other loaders such as vrm are turned off for performance for now since not used much
+//
+
+async function _loader() {
 
 	const GLTFLoader = (await import('three/addons/loaders/GLTFLoader.js')).GLTFLoader
 	const loader = new GLTFLoader()
-
-loader.setCrossOrigin('anonymous')
+	loader.setCrossOrigin('anonymous')
 
 return loader
 
@@ -35,7 +42,7 @@ return loader
 }
 
 //
-// play a requested animation - this is a very simple animation blender
+// play or switch to a requested animation - this is a very simple animation blender
 //
 
 function _play(volume,requested='default') {
@@ -88,71 +95,37 @@ function _play(volume,requested='default') {
 	}
 }
 
-//
-// animation update
-//
+async function _manufacture(surface,volume,gltf=null) {
 
-function _update(volume,time,delta) {
-	if(!volume || !volume.mixer || !volume.clumps || !volume.node) return
-	volume.mixer.update(delta/1000)
-}
-
-export default async function animated(sys,surface,entity,delta) {
-
-	// I use this approach because this code can run on a server and needs to exit gracefully
-	const THREE = getThree()
-	if(!THREE) return
-
-	const volume = entity.volume
-
-	// obliterate?
-	if(entity.obliterate) {
-		removeNode(volume.node)
-		return
-	}
-
-	// update?
-	// @todo detect change to requested animation to play
-	if(volume.node || volume._built) {
-		const time = performance.now()
-		const delta = volume._last_time ? (time-volume._last_time) : 0
-		_update(volume,time,delta)
-		if(volume.vrm) {
-			volume.vrm.update(delta/1000)
-		}
-		volume._last_time = time
-		return
-	}
-	volume._built = true
-
-	const loader = surface.loader || (surface.loader = await getLoader())
+	const loader = surface.loader || (surface.loader = await _loader())
 
 	//
-	// Placeholder @todo switch below to be async?
+	// Placeholder - disabled for now
 	//
 
-	let temp = null
+	let placeholder = null
 	if(false) {
 		const geometry = new THREE.SphereGeometry( 0.1, 32, 16 )
 		const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } )
-		const temp = new THREE.Mesh( geometry, material )
-		surface.scene.add( temp )
+		placeholder = new THREE.Mesh( geometry, material )
+		surface.scene.add( placeholder )
 	}
 
 	//
-	// Real geometry
-	// @todo should publish a loaded event instead of running synchronously
+	// load geometry if null; else just will be cloning
+	// @todo may wish to publish a loaded event instead of running synchronously
 	//
 
-	const gltf = await loader.loadAsync(volume.url)
+	if(!gltf) {
+		gltf = await loader.loadAsync(volume.url)
+	} else {
+		// @todo may wish to deep clone for instancemesh
+	}
 
 	if(!gltf || !gltf.scene) {
 		console.error(uuid,'cannot load',volume.url)
-		return
+		return null
 	}
-
-	// hack - don't delete meshes
-	gltf.scene.traverse((child) => { if ( child.type == 'SkinnedMesh' ) { child.frustumCulled = false; } })
 
 	// remember the root node although it is not used directly - but animations will need it
 	volume.original = gltf
@@ -160,28 +133,21 @@ export default async function animated(sys,surface,entity,delta) {
 	// use this node for rendering, avoiding other errata such as cameras and lights in this file
 	const node = volume.node = gltf.scene
 
+	// please do not delete meshes
+	node.traverse((child) => { if ( child.type == 'SkinnedMesh' ) { child.frustumCulled = false; } })
+
+	// remove placeholder
+	if(placeholder) {
+		surface.scene.remove( placeholder )
+	}
+
+	// load animations if any - merge in any from the main gltf also
+	const clumps = volume.clumps = await load_animations(loader,volume,gltf.animations)
+
 	// set vrm if any - disabled for now but easy to turn back on by setting this - make sure to include vrm loaders
 	const vrm = volume.vrm = null
 
-	// rewrite the hopefully durable volume handle with live pose state; for ease of use
-	bindPose(volume)
-
-	// add to scene
-	if(entity.parent && entity.parent.volume && entity.parent.volume.node) {
-		entity.parent.volume.node.add(volume.node)
-	} else {
-		surface.scene.add(volume.node)
-	}
-
-	// remove placeholder
-	if(temp) {
-		surface.scene.remove( sphere )
-	}
-
-	// load animations - merge in any from the main gltf also
-	const clumps = volume.clumps = await load_animations(loader,volume,gltf.animations)
-
-	// find all the bones
+	// find all the bones if any
 	volume.bones = copy_bones(node,vrm)
 
 	// find all the morph targets - can occur prior to finding bones
@@ -193,12 +159,13 @@ export default async function animated(sys,surface,entity,delta) {
 	// features related to loaded files that are human like
 	{
 
-		// vrms decided to go their own way in how the structure the transform hierarchy
+		// vrms use their own naming - do some patching if any
 		retarget_vrm(node,clumps,vrm)
 
-		// some cleanup - do this last
+		// other small fixes i prefer - do this last
 		misc_cleanup(node,clumps)
 
+		// track a few details for convenience for humans
 		// eyes for gaze
 		// head, neck, body
 		volume.left_eye = volume.bones["LeftEye"]
@@ -209,4 +176,85 @@ export default async function animated(sys,surface,entity,delta) {
 	// start play of default animation by default
 	_play(volume)
 
+	// return node if success
+	return volume.node
 }
+
+//
+// update existing volume over time
+//
+
+function _update(volume,delta) {
+	//const time = performance.now()
+	//const delta = volume._last_time ? (time-volume._last_time) : 0
+
+	if(volume.mixer && volume.clumps && volume.node) {
+		volume.mixer.update(delta/1000)
+	}
+
+	if(volume.vrm) {
+		volume.vrm.update(delta/1000)
+	}
+
+	//volume._last_time = time
+}
+
+//
+// handle frame by frame updates on file assets with animation
+//
+
+export default async function handler(sys,surface,entity,delta) {
+
+	// threejs is not available in server env
+	const THREE = getThree()
+	if(!THREE) return
+
+	const volume = entity.volume
+
+	//
+	// obliterate?
+	//
+
+	if(entity.obliterate && volume) {
+		removeNode(volume.node)
+		return
+	}
+
+	//
+	// update?
+	// @todo detect changes to volume url to force reload
+	//
+
+	if(volume._built) {
+		_update(volume,delta)
+		poseUpdate(surface,volume)
+		return
+	}
+	volume._built = true
+
+	//
+	// @todo later clone if already loaded once
+	// const previous = loadCache[volume.url]
+	// loadCache[volume.url] = volume
+	//
+
+	//
+	// if multiple instancing then may avoid manufacturing more than once
+	// @todo if the file or multiple instancing changed this would not allow updates yet
+	//
+
+	if(volume.instances > 0) {
+		poseBind(surface,volume)
+		if(volume.node) return
+	}
+
+	//
+	// manufacture - sets volume.node ...
+	//
+
+	await _manufacture(surface,volume)
+	poseBind(surface,volume)
+}
+
+
+
