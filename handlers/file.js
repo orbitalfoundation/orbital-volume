@@ -184,19 +184,18 @@ async function _manufacture(surface,volume,gltf=null) {
 // update existing volume over time
 //
 
-function _update(volume,delta) {
-	//const time = performance.now()
-	//const delta = volume._last_time ? (time-volume._last_time) : 0
+function _update(volume) {
+	const time = performance.now()
+	const timespan = volume._last_time ? (time-volume._last_time) : 0
+	volume._last_time = time
 
 	if(volume.mixer && volume.clumps && volume.node) {
-		volume.mixer.update(delta/1000)
+		volume.mixer.update(timespan/1000)
 	}
 
 	if(volume.vrm) {
-		volume.vrm.update(delta/1000)
+		volume.vrm.update(timespan/1000)
 	}
-
-	//volume._last_time = time
 }
 
 //
