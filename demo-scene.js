@@ -116,9 +116,10 @@ const animations = {
 const person001 = {
 	volume: {
 		geometry: 'file',
-		// vendored locally (assets/motorpunk.glb) so the demo is self-contained — no external
-		// host or CORS. Swap for assets/rpm-mixamo-t-posed.glb if you want the RPM template rig.
-		url: new URL('./assets/motorpunk.glb', import.meta.url).href,
+		// the "Alex" avatar from the prismatic.blue scene — vendored locally so the demo is
+		// self-contained (no external host / CORS). Despite the generic filename this is the
+		// hand-tuned RPM+mixamo rig.
+		url: new URL('./assets/rpm-mixamo-t-posed.glb', import.meta.url).href,
 		animations,
 	},
 }

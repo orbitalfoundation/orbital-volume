@@ -42,10 +42,11 @@ Surfaces touched:
 
 ## Demo polish (same session)
 
-- **Avatar.** The Ready Player Me URL 404'd (asset retired). Vendored `assets/motorpunk.glb`
-  (byte-identical to the canonical source at `orbital2024/cloudcity/art/avatars/`, also live on
-  prismatic.blue) so the demo is self-contained — no external host / CORS. `rpm-mixamo-t-posed.glb`
-  remains as a fallback rig.
+- **Avatar.** The Ready Player Me URL 404'd (asset retired). The demo now uses the repo-local
+  `assets/rpm-mixamo-t-posed.glb` — the "Alex" avatar from prismatic.blue (the preferred,
+  hand-tuned rig despite its generic filename), byte-identical to prismatic's copy. Self-contained,
+  no external host / CORS. (A motorpunk.glb was briefly vendored then dropped once the preferred
+  avatar was confirmed.)
 - **Console noise.** Dropped the per-entity "granted new uuid" `console.log` in `volume.js`.
 - **Animation path.** Cleaned `import.meta.url + "/../…"` to `new URL('./…', import.meta.url)`.
 
