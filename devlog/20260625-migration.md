@@ -43,10 +43,18 @@ Surfaces touched:
 ## Demo polish (same session)
 
 - **Avatar.** The Ready Player Me URL 404'd (asset retired). The demo now uses the repo-local
-  `assets/rpm-mixamo-t-posed.glb` — the "Alex" avatar from prismatic.blue (the preferred,
-  hand-tuned rig despite its generic filename), byte-identical to prismatic's copy. Self-contained,
-  no external host / CORS. (A motorpunk.glb was briefly vendored then dropped once the preferred
-  avatar was confirmed.)
+  `assets/alex.glb` — the preferred hand-tuned RPM+mixamo rig from prismatic.blue (renamed from
+  the generic `rpm-mixamo-t-posed.glb`). Self-contained, no external host / CORS. (A motorpunk.glb
+  was briefly vendored then dropped once the preferred avatar was confirmed.)
+
+## Packaging + hosting (same session)
+
+- Published as **`@orbitalfoundation/orbital-volume`** (scoped, mirrors `@orbitalfoundation/bus`).
+  The npm tarball is **library-only** via `files: [volume.js, volume_query.js, handlers/, README]`
+  — demo assets (`alex.glb`, animations), `demo-scene.js`, and `index.html` stay in the repo but
+  are excluded from the package, keeping it lean and asset-agnostic for wide reuse.
+- `three` is a **peerDependency** (`>=0.148`) — consumers bring their own three.js.
+- GitHub Pages serves the live demo from `main` at the homepage URL.
 - **Console noise.** Dropped the per-entity "granted new uuid" `console.log` in `volume.js`.
 - **Animation path.** Cleaned `import.meta.url + "/../…"` to `new URL('./…', import.meta.url)`.
 

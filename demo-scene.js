@@ -116,10 +116,9 @@ const animations = {
 const person001 = {
 	volume: {
 		geometry: 'file',
-		// the "Alex" avatar from the prismatic.blue scene — vendored locally so the demo is
-		// self-contained (no external host / CORS). Despite the generic filename this is the
-		// hand-tuned RPM+mixamo rig.
-		url: new URL('./assets/rpm-mixamo-t-posed.glb', import.meta.url).href,
+		// the "Alex" avatar (the hand-tuned RPM+mixamo rig from the prismatic.blue scene),
+		// vendored locally so the demo is self-contained — no external host / CORS.
+		url: new URL('./assets/alex.glb', import.meta.url).href,
 		animations,
 	},
 }
