@@ -1,6 +1,7 @@
 
-// @todo for some reason /+esm does something very strange with import maps - they stop working!
-import sys from 'https://cdn.jsdelivr.net/npm/orbital-sys@latest/src/sys.js'
+// The bus is resolved via the import map in index.html (@orbitalfoundation/bus -> jsDelivr),
+// which keeps its internal `@orbitalfoundation/utils` import working in the browser too.
+import { createBus } from '@orbitalfoundation/bus'
 
 //
 // fetch volume itself - providing 3d services - and then some volume rendered 3d elements
@@ -93,15 +94,17 @@ const cylinder001 = {
 			scale:[0.1,0.1,0.1],
 		}
 	},
-	resolve: function(blob,sys,self) {
-		// an example of a 'system' observing a global tick message at 60fps (runs on client or server)
-		if(!blob.tick) return
-		// typically one has to publish a message to have a reaction but I'm trying an idea of directly binding state for some special cases
-		// here volume pose properties are magically bound to 3js, so they can be altered directly without publishing a message
-		// this may or may not be a durable pattern and still needs evaluation
-		// the risk is that this declaration may not be authoritative; it needs to be marked as such ideally
-		// also modifying state directly here implies that that state is leaky across observer process isolation
-		self.volume.pose.rotation.x += 0.01
+	uuid: 'cylinder001',
+}
+
+// A separate ticker that spins the cylinder. The new bus keeps DATA (the entity above, a plain
+// blob the volume service renders) and BEHAVIOR (this listener) as separate blobs. The volume
+// service binds pose straight into three.js, so mutating the entity's live pose here animates it
+// each frame without re-publishing — the "direct binding" idea, now cleanly separated.
+const cylinder001_spin = {
+	id: 'cylinder001-spin',
+	resolve(blob) {
+		if(blob.tick) cylinder001.volume.pose.rotation.x += 0.01
 	}
 }
 
@@ -119,5 +122,13 @@ const person001 = {
 }
 
 
-// volume will observe these events and react to them - building 3d views in this case
-sys(volume_system,scene001,camera001,light001,light002,cube001,sphere001,cylinder001,person001)
+// Make a bus, then hand it the manifest. The first entry { load:'here/volume.js' } pulls in the
+// volume service (registering it as a listener); the remaining entries are plain entities the
+// volume service observes and renders. The array is processed in order, so volume is live before
+// the entities arrive.
+const bus = createBus()
+await bus.resolve([volume_system,scene001,camera001,light001,light002,cube001,sphere001,cylinder001,cylinder001_spin,person001])
+
+// Rendering happens on tick (scene.js repaints when visited), so start the realtime loop —
+// in the browser this drives requestAnimationFrame. This replaces orbital-sys's implicit ticker.
+bus.resolve({ run:'realtime', hz:60, dt:1/60 })

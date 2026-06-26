@@ -191,7 +191,8 @@ export function poseBind(surface,volume,node=null) {
 	node.matrixWorldNeedsUpdate = true
 }
 
-const matrix = new THREE.Matrix4()
+// scratch matrix — guarded so this module is importable on the server, where THREE is null
+const matrix = THREE ? new THREE.Matrix4() : null
 
 ///
 /// poseUpdate

@@ -30,7 +30,7 @@ const handlers = {
 let id = 1
 
 // volume update helper
-async function _update(sys,entity,delta) {
+async function _update(bus,entity,delta) {
 
 	// a change request or a new object @todo merge
 	if(delta) {
@@ -62,8 +62,8 @@ async function _update(sys,entity,delta) {
 	const name = entity.volume.surface || 'volume001'
 	const surface = this._surfaces[name] || (this._surfaces[name] = {name,isServer})
 
-	// update
-	await handler(sys,surface,entity,delta)
+	// update — handlers receive the bus first so they can publish back if they wish
+	await handler(bus,surface,entity,delta)
 
 	// remove after handling if desired
 	if(entity.obliterate && entity.uuid) {
@@ -72,24 +72,24 @@ async function _update(sys,entity,delta) {
 
 }
 
-async function resolve(blob,sys) {
+async function resolve(blob,bus) {
 
-	// test - for now stuff a volume helper into sys @todo revisit
-	// we need some formal way to talk to some services more directly
-	// maybe one should actually formally request a direct connection via sys?
-	sys.volume = this
+	// Expose volume as a directly-callable service on the bus (bus.volume.query(...), etc).
+	// This is the "install a service" pattern; the bus also offers bus.install(name,service),
+	// but a plain assignment is fine here and idempotent across re-entry.
+	bus.volume = this
 
 	// visit all volume instances on tick
 	if(blob.tick) {
 		const entities = Object.values(this._entities)
 		for(const entity of entities) {
-			await this._update(sys,entity,null)
+			await this._update(bus,entity,null)
 		}
 	}
 
 	// visit one volume instance delta on explicit update request
 	if(blob.volume) {
-		await this._update(sys,null,blob)
+		await this._update(bus,null,blob)
 	}
 }
 
@@ -100,8 +100,12 @@ async function resolve(blob,sys) {
 ///
 /// observe and react to volume components on entities
 ///
+/// `id` identifies this listener to the bus (which keys on id, not uuid). `uuid` is retained
+/// for human-readable logging and for any consumer that still references it.
+///
 
 export const volume_system = {
+	id: uuid,
 	uuid,
 	resolve,
 	query,
@@ -109,8 +113,3 @@ export const volume_system = {
 	_entities: {},
 	_surfaces: {},
 }
-
-
-
-
-
