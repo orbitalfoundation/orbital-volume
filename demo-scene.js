@@ -110,13 +110,15 @@ const cylinder001_spin = {
 
 // do not export
 const animations = {
-	default: import.meta.url + "/../assets/animations/unarmed-idle.glb",
+	default: new URL('./assets/animations/unarmed-idle.glb', import.meta.url).href,
 }
 
 const person001 = {
 	volume: {
 		geometry: 'file',
-		url: 'https://models.readyplayer.me/664956c743dbd726eefeb99b.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png',
+		// vendored locally (assets/motorpunk.glb) so the demo is self-contained — no external
+		// host or CORS. Swap for assets/rpm-mixamo-t-posed.glb if you want the RPM template rig.
+		url: new URL('./assets/motorpunk.glb', import.meta.url).href,
 		animations,
 	},
 }

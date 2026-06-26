@@ -35,9 +35,8 @@ async function _update(bus,entity,delta) {
 	// a change request or a new object @todo merge
 	if(delta) {
 		if(!delta.uuid) {
-			// for now grant a new uuid
+			// for now grant a new uuid (silent — was noisy console spam, one per entity)
 			delta.uuid = delta._metadata ? `${delta._metadata.key}` : `volume-${id++}`
-			console.log(uuid,'granted new uuid',delta.uuid)
 		}
 		entity = this._entities[delta.uuid]
 		if(!entity) {

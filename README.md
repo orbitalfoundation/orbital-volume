@@ -13,16 +13,9 @@ A 3d helper service
 
 ## Running the demo
 
-It's a static, build-free ES-module page. Serve the folder and open `index.html`:
-
-```sh
-npx serve .          # or: python3 -m http.server
-```
-
-The bus is loaded in the browser via the import map in `index.html`
-(`@orbitalfoundation/bus` → jsDelivr). See `demo-scene.js` for the entry point and
-`MIGRATION.md` for how this was moved onto the new bus. A Node-side smoke test of the bus
-wiring (no rendering) lives at `test/smoke.mjs` — run `npm run smoke`.
+Build-free ES modules — serve the folder and open `index.html`: `npx serve .`
+Entry point is `demo-scene.js`; `npm run smoke` runs a Node check of the bus wiring.
+Revision notes live in [`devlog/`](devlog).
 
 This comes out of earlier efforts which are still visible at:
 
@@ -34,13 +27,7 @@ This comes out of earlier efforts which are still visible at:
 
 This service is experimental, and is testing ways to decouple declarations from code. The philosophy is generally to be reactive, where the programmer focuses just on declaring state the way they want.
 
-This service is built on [`@orbitalfoundation/bus`](https://github.com/orbitalfoundation/orbital-bus) (the successor to orbital-sys), which provides manifests (discussed below) and decouples services. Some of the tensions below now have positions taken by the bus's [SPEC](https://github.com/orbitalfoundation/orbital-bus/blob/main/SPEC.md):
-
-- **UUIDs / identity** — the bus keys listeners on `id` (reserved vocabulary), and *first-responder queries* (`await bus.resolve({query}))` are now a first-class mechanism. Volume keeps its own internal entity cache keyed by `uuid`; unifying the two is still open.
-- **Queries** — first-responder query is built in, so a dedicated spatial-index service can answer `bus.resolve({spatial_query})` without volume owning that role.
-- **Authoritative instances / binding** — still an open research question here; volume still back-writes into passed objects (the "direct binding" pattern). The bus's stance is "state is live and uncloned, resolvers may mutate in place" (SPEC §1.3), which legitimizes the pattern but doesn't yet give an authoritative-instance flag.
-
-The remaining tensions, still being explored:
+This service is built on [`@orbitalfoundation/bus`](https://github.com/orbitalfoundation/orbital-bus) (the successor to orbital-sys), which provides manifests (discussed below) and decouples services. Some tensions below now have positions in the bus's [SPEC](https://github.com/orbitalfoundation/orbital-bus/blob/main/SPEC.md) (identity via `id`, first-responder queries, live uncloned state). The rest, still being explored:
 
 - UUIDs. It's highly convenient to have uuids on objects. It's arguable that orbital-sys should inject these even. There are some hacks here, I generate a uuid if needed, but this still needs a more aggressive study. UUDS also arguably should be non collidant and global, even over networks, perhaps with a formal path naming scheme.
 
