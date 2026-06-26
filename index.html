@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.19/dist/bundle.min.js"></script>
+<title>Orbital Volume — declarative 3D, reactively rendered</title>
+
 <script type="importmap">
     {
         "imports": {
@@ -18,38 +18,145 @@
         }
     }
 </script>
-</head>
-<body>
 
 <style>
-body {
-	font-family: Arial, sans-serif;
-	line-height: 1.6;
-	color: #333;
-	max-width: 800px;
-	margin: 0 auto;
-	padding: 20px;
-	background-color: #f4f4f4;
-}
-h1 {
-	color: #2c3e50;
-	text-align: center;
-}
-#system-content-container {
-	background-color: #fff;
-	border-radius: 8px;
-	padding: 20px;
-	margin-bottom: 20px;
-	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+	:root {
+		--bg: #0f1115;
+		--panel: #171a21;
+		--panel-2: #1e222b;
+		--ink: #e7ebf0;
+		--muted: #9aa4b2;
+		--accent: #6cc6ff;
+		--accent-2: #b78bff;
+		--border: #2a2f3a;
+	}
+	* { box-sizing: border-box; }
+	body {
+		font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		line-height: 1.65;
+		color: var(--ink);
+		margin: 0;
+		background:
+			radial-gradient(1200px 600px at 80% -10%, rgba(108,198,255,0.12), transparent 60%),
+			radial-gradient(900px 500px at -10% 10%, rgba(183,139,255,0.10), transparent 55%),
+			var(--bg);
+	}
+	.wrap { max-width: 880px; margin: 0 auto; padding: 40px 22px 64px; }
+	header.hero { text-align: center; margin-bottom: 28px; }
+	.eyebrow {
+		display: inline-block; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+		color: var(--accent); border: 1px solid var(--border); border-radius: 999px;
+		padding: 5px 12px; margin-bottom: 16px;
+	}
+	h1 {
+		font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 0 0 12px;
+		background: linear-gradient(90deg, var(--accent), var(--accent-2));
+		-webkit-background-clip: text; background-clip: text; color: transparent;
+	}
+	.tagline { color: var(--muted); font-size: 18px; max-width: 620px; margin: 0 auto; }
+	.panel {
+		background: linear-gradient(180deg, var(--panel), var(--panel-2));
+		border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+		box-shadow: 0 10px 30px rgba(0,0,0,0.35); margin: 22px 0;
+	}
+	#volume001 { width: 100%; height: 520px; border-radius: 10px; overflow: hidden; background: #202020; }
+	.stage-caption { color: var(--muted); font-size: 13px; text-align: center; margin-top: 10px; }
+	h2 { font-size: 20px; margin: 6px 0 8px; }
+	p { color: #d4dae3; }
+	.muted { color: var(--muted); }
+	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+	@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+	.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+	.card h3 { margin: 0 0 6px; font-size: 16px; color: var(--ink); }
+	.card p { margin: 0; font-size: 14.5px; color: var(--muted); }
+	pre {
+		background: #0c0e12; border: 1px solid var(--border); border-radius: 12px;
+		padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.6;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #cdd6e3;
+	}
+	pre .c { color: #6f7a8b; } pre .k { color: var(--accent-2); } pre .s { color: #7fd6a0; }
+	a { color: var(--accent); text-decoration: none; }
+	a:hover { text-decoration: underline; }
+	footer { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+	footer a { margin-right: 16px; }
+	code.inline { background: #0c0e12; border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; font-family: ui-monospace, monospace; font-size: 13px; color: #cdd6e3; }
 </style>
+</head>
+<body>
+<div class="wrap">
 
-<div id="system-content-container">
-	<h1>Orbital Volume - Example</h1>
-	<p>See <a href='https://github.com/orbitalfoundation/orbital-volume'>github/orbitalfoundation/orbital-volume</a> for more details. Also there is a work in progress <a href="sparse-voxel-octree.html">sparse voxel octree</a> search algorithm that will be merged in later.</p>
-	<div id="volume001" style="width:100%;height:512px"></div>
+	<header class="hero">
+		<span class="eyebrow">orbital · volume</span>
+		<h1>Declarative 3D, reactively rendered</h1>
+		<p class="tagline">You describe <em>what</em> exists. Volume figures out <em>how</em> to draw it — and keeps it in sync as the world changes.</p>
+	</header>
+
+	<!-- live demo: the scene below is built entirely from declarations in demo-scene.js -->
+	<div class="panel">
+		<div id="volume001"></div>
+		<div class="stage-caption">Live — drag to orbit. Grid, primitives, two lights, and a rigged avatar, all declared as data.</div>
+	</div>
+
+	<div class="panel">
+		<h2>The idea</h2>
+		<p>Most 3D code is imperative: you build a scene graph by hand, wiring meshes, cameras, and lights together call by call. <strong>Orbital Volume inverts that.</strong> You declare entities decorated with a <code class="inline">volume</code> component — a cube, a light, a camera, an avatar — and publish them onto a shared event bus. Volume observes that traffic and renders the three.js scene for you. Add, change, or remove a declaration and the view follows. The programmer focuses on stating intent; the rendering is a reaction.</p>
+
+		<div class="grid" style="margin-top:14px">
+			<div class="card">
+				<h3>Declarative layouts</h3>
+				<p>A scene is a list of objects, not a script. Entities carry components; Volume maps each <code class="inline">geometry</code> to a renderer and keeps pose, material, and lighting live.</p>
+			</div>
+			<div class="card">
+				<h3>Manifests are real JS</h3>
+				<p>Layouts load as JavaScript modules, so you get loops, variables, and computed values — declarative <em>shape</em> with the full power of the language. Twelve avatars in one line.</p>
+			</div>
+			<div class="card">
+				<h3>Reactive, late-bound</h3>
+				<p>Built on <a href="https://github.com/orbitalfoundation/orbital-bus">@orbitalfoundation/bus</a>, a tiny pub/sub kernel. Services self-assemble at runtime; nothing is wired ahead of time.</p>
+			</div>
+			<div class="card">
+				<h3>Client &amp; server</h3>
+				<p>The same kernel runs in the browser and on the server. Volume draws on the client and no-ops cleanly where there is no display — one codebase, two homes.</p>
+			</div>
+		</div>
+	</div>
+
+	<div class="panel">
+		<h2>What it looks like</h2>
+		<p class="muted">The red cube in the scene above is just this:</p>
+<pre><span class="c">// declare *what* exists — not how to render it</span>
+<span class="k">const</span> cube = {
+  volume: {
+    geometry: <span class="s">'cube'</span>,
+    material: { color: <span class="s">'red'</span> },
+    pose: { position: [-1, 2, 0], scale: [0.1, 0.1, 0.1] },
+  },
+}
+
+<span class="c">// hand it to the bus; Volume observes and draws it, then keeps drawing each frame</span>
+<span class="k">const</span> bus = createBus()
+<span class="k">await</span> bus.resolve([{ load: <span class="s">'here/volume.js'</span> }, cube])
+bus.resolve({ run: <span class="s">'realtime'</span> })</pre>
+		<p class="muted" style="font-size:13.5px">See <a href="demo-scene.js">demo-scene.js</a> for the full scene used on this page.</p>
+	</div>
+
+	<div class="panel">
+		<h2>Under the hood</h2>
+		<p>Volume is a thin, declarative shim over <a href="https://threejs.org">three.js</a>: scenes, cameras, lights, primitives, and GLB/VRM model loading with animation retargeting and facial visemes. It descends from a long line of experiments in data-driven, agent-style applications — the bus it rides on is the distilled, published successor to <a href="https://github.com/orbitalfoundation/orbital-sys">orbital-sys</a>.</p>
+		<!-- work-in-progress sparse voxel octree spatial search — re-enable when merged
+		<p>There is also a work-in-progress <a href="sparse-voxel-octree.html">sparse voxel octree</a> search algorithm that will be merged in later.</p>
+		-->
+	</div>
+
+	<footer>
+		<a href="https://github.com/orbitalfoundation/orbital-volume">GitHub</a>
+		<a href="https://www.npmjs.com/package/@orbitalfoundation/orbital-volume">npm</a>
+		<a href="https://github.com/orbitalfoundation/orbital-bus">orbital-bus</a>
+		<span class="muted">· MIT · part of the Orbital Foundation</span>
+	</footer>
+
 </div>
 
+<script type="module" src="demo-scene.js"></script>
 </body>
 </html>
-<script type="module" src="demo-scene.js"></script>
