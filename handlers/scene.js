@@ -1,7 +1,7 @@
 
 const uuid = 'orbital/orbital-volume/scene'
 
-import { getThree, markSRGB } from './three-helper.js'
+import { getThree, ensureThree, markSRGB } from './three-helper.js'
 
 //
 // handle scene related events such as finding a rendering div and setting up a camera and updates
@@ -10,7 +10,7 @@ import { getThree, markSRGB } from './three-helper.js'
 export default async function scene_handler(sys,surface,entity,delta) {
 
 	// get 3js
-	const THREE = getThree()
+	const THREE = await ensureThree()
 	if(!THREE) return
 
 	const volume = entity.volume
@@ -229,6 +229,7 @@ export default async function scene_handler(sys,surface,entity,delta) {
 			surface.camera.aspect = surface.aspect
 			surface.camera.updateProjectionMatrix()
 		}
+		renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
 		renderer.setSize(surface.width,surface.height)
 		renderer.render(surface.scene,surface.camera)
 	}

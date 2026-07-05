@@ -1,10 +1,10 @@
 
-import { getThree, buildMaterial, removeNode, poseBind, poseUpdate } from './three-helper.js'
+import { getThree, ensureThree, buildMaterial, removeNode, poseBind, poseUpdate } from './three-helper.js'
 
-export default function prim(sys,surface,entity,delta) {
+export default async function prim(sys,surface,entity,delta) {
 
 	// client side only
-	const THREE = getThree()
+	const THREE = await ensureThree()
 	if(!THREE) return
 
 	const volume = entity.volume

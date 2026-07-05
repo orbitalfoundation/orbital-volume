@@ -1,5 +1,5 @@
 
-import { getThree, removeNode, poseBind, poseUpdate, markSRGB } from './three-helper.js'
+import { getThree, ensureThree, removeNode, poseBind, poseUpdate, markSRGB } from './three-helper.js'
 import { getElevationGrid, getSatelliteCanvas } from './load-helpers/terrain-tiles.js'
 
 ///
@@ -42,7 +42,7 @@ import { getElevationGrid, getSatelliteCanvas } from './load-helpers/terrain-til
 
 export default async function terrain(sys, surface, entity, delta) {
 
-	const THREE = getThree()
+	const THREE = await ensureThree()
 	if (!THREE) return
 
 	const volume = entity.volume

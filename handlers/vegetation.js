@@ -1,5 +1,5 @@
 
-import { getThree, poseBind, poseUpdate } from './three-helper.js'
+import { getThree, ensureThree, poseBind, poseUpdate } from './three-helper.js'
 import { VegetationBatch } from './load-helpers/vegetation-batch.js'
 
 ///
@@ -36,9 +36,9 @@ import { VegetationBatch } from './load-helpers/vegetation-batch.js'
 /// changes. Wind runs continuously on the GPU either way.
 ///
 
-export default function vegetation(sys, surface, entity, delta) {
+export default async function vegetation(sys, surface, entity, delta) {
 
-	const THREE = getThree()
+	const THREE = await ensureThree()
 	if (!THREE) return
 
 	const volume = entity.volume

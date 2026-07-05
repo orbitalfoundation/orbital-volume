@@ -185,24 +185,33 @@ function buildCrownGeometry(THREE) {
 		vertexBase += 4
 	}
 
-	const plumes = 6
-	for (let p = 0; p < plumes; p++) {
-		const angle = (p / plumes) * Math.PI * 2 + rand() * 0.9
-		const radius = p === 0 ? 0 : 0.35 + rand() * 0.75
-		const px = Math.cos(angle) * radius
-		const pz = Math.sin(angle) * radius
-		// biased downward so foliage drapes below the stalk tip
-		const py = (rand() - 0.62) * 1.3
-		const scale = 1.15 + rand() * 0.7
-		const variant = rand() < 0.5 ? 0 : 1
-		const ao = Math.min(1, 0.72 + radius * 0.28)
-		for (let c = 0; c < 2; c++) {
-			pushQuad([px, py, pz],
-				angle + c * Math.PI / 2 + rand() * 0.5,
-				(rand() - 0.5) * 0.35,
-				1.7 * scale, 1.0 * scale, variant, ao)
+	// fountain-shaped crown: a small plume covering the tip, then rings of
+	// plumes spreading wider and larger further down the stalk, so foliage
+	// drapes along the upper third instead of pooling in one puff at the top
+	const rings = [
+		{ count: 1, py: 0.42, radius: 0.05, scale: 0.85 },
+		{ count: 3, py: -0.15, radius: 0.35, scale: 1.15 },
+		{ count: 3, py: -0.95, radius: 0.6, scale: 1.45 },
+		{ count: 3, py: -1.85, radius: 0.55, scale: 1.3 }
+	]
+	rings.forEach((ring) => {
+		for (let p = 0; p < ring.count; p++) {
+			const angle = (p / ring.count) * Math.PI * 2 + rand() * 2.0
+			const radius = ring.radius * (0.7 + rand() * 0.6)
+			const px = Math.cos(angle) * radius
+			const pz = Math.sin(angle) * radius
+			const py = ring.py + (rand() - 0.5) * 0.45
+			const scale = ring.scale * (0.85 + rand() * 0.3)
+			const variant = rand() < 0.5 ? 0 : 1
+			const ao = Math.min(1, 0.68 + (radius + Math.max(0, py + 2) * 0.12) * 0.25)
+			for (let c = 0; c < 2; c++) {
+				pushQuad([px, py, pz],
+					angle + c * Math.PI / 2 + rand() * 0.5,
+					(rand() - 0.5) * 0.35,
+					1.7 * scale, 1.0 * scale, variant, ao)
+			}
 		}
-	}
+	})
 
 	const geometry = new THREE.BufferGeometry()
 	geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
@@ -275,7 +284,7 @@ export class VegetationBatch {
 		if (!THREE) throw new Error('VegetationBatch is client-side only')
 
 		this.capacity = options.capacity || 4096
-		this.crownFraction = options.crownFraction !== undefined ? options.crownFraction : 0.87
+		this.crownFraction = options.crownFraction !== undefined ? options.crownFraction : 0.92
 		this.crownMinHeight = options.crownMinHeight !== undefined ? options.crownMinHeight : 1.5
 		this.crownMaxScale = options.crownMaxScale !== undefined ? options.crownMaxScale : 2.9
 		this.leafColor = new THREE.Color(options.leafColor !== undefined ? options.leafColor : 0x9cbd60)
@@ -401,12 +410,13 @@ export class VegetationBatch {
 				this._scale.setScalar(crownScale)
 				this._matrix.compose(this._position, this._quaternion, this._scale)
 				this.crownMesh.setMatrixAt(i, this._matrix)
-				// leaf tint: stalk color pulled toward leaf green with a
-				// deterministic per-crown wobble so the canopy isn't flat
-				this._color.setHex(plant.color !== undefined ? plant.color : 0x7a8f4a).lerp(this.leafColor, 0.75)
+				// leaf tint: stalk color pulled toward leaf green - but only
+				// partially, so a golden or gray-bloom stalk keeps a visibly
+				// different crown - plus a deterministic per-crown wobble
+				this._color.setHex(plant.color !== undefined ? plant.color : 0x7a8f4a).lerp(this.leafColor, 0.6)
 				const w = Math.sin(i * 78.233) * 43758.5453
 				const wobble = w - Math.floor(w)
-				this._color.offsetHSL((wobble - 0.5) * 0.045, (wobble - 0.5) * 0.12, (wobble - 0.5) * 0.10)
+				this._color.offsetHSL((wobble - 0.5) * 0.06, (wobble - 0.5) * 0.14, (wobble - 0.5) * 0.14)
 				this.crownMesh.setColorAt(i, this._color)
 				this.amps[i] = 0.013 * height
 			} else {

@@ -1,9 +1,9 @@
 
-import { getThree, buildMaterial, removeNode, poseBind } from './three-helper.js'
+import { getThree, ensureThree, buildMaterial, removeNode, poseBind } from './three-helper.js'
 
 export default async function light(sys,surface,entity,delta) {
 
-	const THREE = getThree()
+	const THREE = await ensureThree()
 	if(!THREE) return
 
 	const volume = entity.volume

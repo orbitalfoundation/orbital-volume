@@ -1,4 +1,4 @@
-import { getThree, buildMaterial, removeNode, poseBind, poseUpdate } from './three-helper.js'
+import { getThree, ensureThree, buildMaterial, removeNode, poseBind, poseUpdate } from './three-helper.js'
 
 import { load_animations } from './load-helpers/load-animations.js'
 import { morph_targets } from './load-helpers/morph-targets.js'
@@ -24,19 +24,23 @@ async function _loader() {
 
 return loader
 
-	const DRACOLoader = (await import('three/addons/loaders/DRACOLoader.js')).DRACOLoader
-	const dracoLoader = new DRACOLoader()
-	//dracoLoader.setDecoderPath("@todo")
-	loader.setDRACOLoader(dracoLoader)
-
-	const KTX2Loader = (await import('three/addons/loaders/KTX2Loader.js')).KTX2Loader
-	const ktx2Loader = new KTX2Loader()
-	//ktx2Loader.setTranscoderPath(import.meta.url+"@todo") 
-	loader.setKTX2Loader(ktx2Loader)
-
-	const MeshOptDecoder = (await import('three/addons/loaders/MeshOptDecoder.js')).MeshOptDecoder
-	loader.setMeshoptDecoder(MeshOptDecoder)
-
+	// dead code below intentionally commented out: bundlers (esbuild/vite)
+	// resolve dynamic import strings at build time, and MeshOptDecoder.js is
+	// not a real three/addons path (a local copy lives in load-helpers/)
+	//
+	// const DRACOLoader = (await import('three/addons/loaders/DRACOLoader.js')).DRACOLoader
+	// const dracoLoader = new DRACOLoader()
+	// dracoLoader.setDecoderPath("@todo")
+	// loader.setDRACOLoader(dracoLoader)
+	//
+	// const KTX2Loader = (await import('three/addons/loaders/KTX2Loader.js')).KTX2Loader
+	// const ktx2Loader = new KTX2Loader()
+	// ktx2Loader.setTranscoderPath(import.meta.url+"@todo")
+	// loader.setKTX2Loader(ktx2Loader)
+	//
+	// const MeshOptDecoder = (await import('./load-helpers/meshopt_decoder.js')).MeshoptDecoder
+	// loader.setMeshoptDecoder(MeshOptDecoder)
+	//
 	// import { VRM, VRMUtils, VRMHumanoid, VRMLoaderPlugin } from './three-vrm.module.js'
 	// loader.register((parser) => { return new VRMLoaderPlugin(parser) })
 }
@@ -205,7 +209,7 @@ function _update(volume) {
 export default async function handler(sys,surface,entity,delta) {
 
 	// threejs is not available in server env
-	const THREE = getThree()
+	const THREE = await ensureThree()
 	if(!THREE) return
 
 	const volume = entity.volume

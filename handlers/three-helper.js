@@ -1,12 +1,19 @@
 
 const isServer = (typeof window === 'undefined') ? true : false
 
-globalThis.THREE = null
+globalThis.THREE = globalThis.THREE || null
 let textureLoader = null
+let threeLoading = null
 
+// Lazy dynamic import rather than top-level await: keeps this module loadable
+// on servers without three installed AND bundleable by esbuild/vite targets
+// that reject top-level await. Handlers await ensureThree() before building.
 if(isServer == false) {
-	globalThis.THREE = await import('three')
-	textureLoader = new THREE.TextureLoader()
+	threeLoading = import('three').then((mod) => {
+		globalThis.THREE = mod
+		textureLoader = new mod.TextureLoader()
+		return mod
+	})
 }
 
 ///
@@ -15,6 +22,15 @@ if(isServer == false) {
 
 export function getThree() {
 	return isServer == true ? null : globalThis.THREE
+}
+
+///
+/// await threejs availability - null on server; handlers call this first
+///
+
+export async function ensureThree() {
+	if(isServer) return null
+	return globalThis.THREE || threeLoading
 }
 
 ///

@@ -1,5 +1,5 @@
 
-import { getThree, buildMaterial, removeNode, poseBind } from './three-helper.js'
+import { getThree, ensureThree, buildMaterial, removeNode, poseBind } from './three-helper.js'
 
 class PerlinNoise {
     constructor(seed=1234) {
@@ -82,9 +82,10 @@ function generateIslandElevationWithPerlin(size,seed=42) {
 	return data
 }
 
-function generatePlane(volume,elevations) {
+async function generatePlane(volume,elevations) {
 
-	const THREE = getThree()
+	const THREE = await ensureThree()
+	if(!THREE) return
 
 	const geometry = new THREE.PlaneGeometry(...volume.props)
 	const vertices = geometry.attributes.position.array
@@ -107,7 +108,7 @@ function generatePlane(volume,elevations) {
 	volume.node.add(child)
 }
 
-export default function layer(sys,surface,entity,delta) {
+export default async function layer(sys,surface,entity,delta) {
 
 	const volume = entity.volume
 
@@ -126,7 +127,7 @@ export default function layer(sys,surface,entity,delta) {
 	if(!surface.layers) surface.layers = []
 	surface.layers.push({elevations,width})
 	if(!surface.isServer) {
-		generatePlane(volume,elevations)
+		await generatePlane(volume,elevations)
 		poseBind(surface,volume)
 	}
 }
