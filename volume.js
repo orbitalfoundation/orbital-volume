@@ -9,6 +9,8 @@ import layer from './handlers/layer.js'
 import light from './handlers/light.js'
 import prim from './handlers/prim.js'
 import scene from './handlers/scene.js'
+import terrain from './handlers/terrain.js'
+import vegetation from './handlers/vegetation.js'
 
 import query from './volume_query.js'
 
@@ -18,6 +20,9 @@ const handlers = {
 	layer,
 	light,
 	scene,
+	terrain,
+	dem:terrain,
+	vegetation,
 
 	sphere:prim,
 	cube:prim,

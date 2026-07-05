@@ -10,12 +10,42 @@ A 3d helper service
 - uses a data driven approach where it observes events and reacts to them on top of [`@orbitalfoundation/bus`](https://github.com/orbitalfoundation/orbital-bus) (the maintained successor to orbital-sys)
 - provides basic support for 3d scenes, cameras, lights, 3d model loading
 - provides support for loading rigged human animated models with visemes using RPM, VRM, Reallusion
+- streams real-world terrain (elevation + satellite tiles) as a `terrain` volume
+- renders whole fields of instanced, wind-animated vegetation as a `vegetation` volume
 
 ## Running the demo
 
 Build-free ES modules — serve the folder and open `index.html`: `npx serve .`
 Entry point is `demo-scene.js`; `npm run smoke` runs a Node check of the bus wiring.
 Revision notes live in [`devlog/`](devlog).
+
+There is a second demo at `terrain.html` (entry `demo-terrain.js`) showing the
+2.1 terrain + vegetation handlers: a satellite-draped Grand Canyon heightfield
+planted with a few thousand growing, swaying bamboo culms in two draw calls.
+
+## New in 2.1: terrain, vegetation, atmosphere
+
+`geometry: 'terrain'` — heightfield terrain from raw elevation grids or
+fetched by lat/lon bounds from public tile services (AWS Terrarium elevation,
+ArcGIS World Imagery drape by default; see
+`handlers/load-helpers/terrain-tiles.js`). After building, the handler
+publishes `terrain.sample(x,z)` (ground height at node-local coords) and
+`terrain.minElev/maxElev` back onto the component so other systems can plant
+things on the surface. Also registered under the alias `geometry: 'dem'`.
+
+`geometry: 'vegetation'` — an entire field of stalk-form plants (bamboo,
+reeds, saplings) rendered as two instanced draw calls: tapered node-ringed
+stalks plus alpha-tested painted leaf crowns with GPU wind and proper shadow
+casting. Declare `vegetation.plants = [{xyz, height, radius, color, tilt}]`,
+mutate the array in place, and set `vegetation.dirty = true` to upload
+changes — growth animation never rebuilds geometry. Thousands of animated
+plants cost roughly the same as two meshes.
+
+Scene atmosphere options on `geometry: 'scene'` volumes: `sky` (gradient
+background), `fog {color,near,far}`, `hemisphere {sky,ground,intensity}`,
+`sun {color,intensity,position,shadow}` for a shadow-casting key light,
+`exposure`, and `antialias` (defaults on with `prettier`). All additive and
+backwards compatible.
 
 This comes out of earlier efforts which are still visible at:
 

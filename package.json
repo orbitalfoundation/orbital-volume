@@ -1,6 +1,6 @@
 {
   "name": "@orbitalfoundation/orbital-volume",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Declarative 3D shim over three.js for @orbitalfoundation/bus — observes ECS 'volume' components and renders scenes, cameras, lights, and rigged/animated avatars.",
   "type": "module",
   "main": "volume.js",

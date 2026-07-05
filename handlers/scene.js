@@ -1,7 +1,7 @@
 
 const uuid = 'orbital/orbital-volume/scene'
 
-import { getThree } from './three-helper.js'
+import { getThree, markSRGB } from './three-helper.js'
 
 //
 // handle scene related events such as finding a rendering div and setting up a camera and updates
@@ -67,7 +67,8 @@ export default async function scene_handler(sys,surface,entity,delta) {
 	const alpha = volume.hasOwnProperty('alpha') ? volume.alpha : false
 	const background = volume.hasOwnProperty('background') ? volume.background : 0x000000
 	const render_args = {
-		antialias: false,
+		// antialias defaults on when the prettier pipeline is requested
+		antialias: volume.hasOwnProperty('antialias') ? volume.antialias : !!volume.prettier,
 		preserveDrawingBuffer: true,
 		alpha,
 	}
@@ -95,7 +96,9 @@ export default async function scene_handler(sys,surface,entity,delta) {
 		surface.renderer.outputColorSpace = THREE.SRGBColorSpace
 		surface.renderer.outputEncoding = THREE.sRGBEncoding
 		surface.renderer.toneMapping = THREE.ACESFilmicToneMapping
+		surface.renderer.toneMappingExposure = volume.exposure || 1.0
 		surface.renderer.shadowMap.enabled = true
+		surface.renderer.shadowMap.type = THREE.PCFSoftShadowMap
 		surface.renderer.useLegacyLights = false
 	}
 
@@ -106,6 +109,71 @@ export default async function scene_handler(sys,surface,entity,delta) {
 	const scene = surface.scene = new THREE.Scene()
 	if(background != 'transparent') {
 		scene.background = new THREE.Color(background)
+	}
+
+	//
+	// Atmosphere options
+	//
+	// sky: true for a default daylight gradient, or [zenith, mid, horizon]
+	//      css color strings for a custom one (screen-space vertical gradient)
+	// fog: { color, near, far }
+	// hemisphere: { sky, ground, intensity } - hemisphere fill light
+	// sun: { color, intensity, position:[x,y,z], target:[x,y,z],
+	//        shadow: true | { size, extent, near, far } } - directional light
+	//
+
+	if(volume.sky) {
+		const stops = Array.isArray(volume.sky) ? volume.sky : ['#7ab3dd','#b8d8ea','#f2ede2']
+		const canvas = document.createElement('canvas')
+		canvas.width = 2
+		canvas.height = 512
+		const ctx = canvas.getContext('2d')
+		const grad = ctx.createLinearGradient(0, 0, 0, 512)
+		stops.forEach((color,i) => grad.addColorStop(i / (stops.length - 1), color))
+		ctx.fillStyle = grad
+		ctx.fillRect(0, 0, 2, 512)
+		scene.background = markSRGB(new THREE.CanvasTexture(canvas))
+	}
+
+	if(volume.fog) {
+		scene.fog = new THREE.Fog(
+			volume.fog.color !== undefined ? volume.fog.color : 0xe1ecf2,
+			volume.fog.near !== undefined ? volume.fog.near : 100,
+			volume.fog.far !== undefined ? volume.fog.far : 1000
+		)
+	}
+
+	if(volume.hemisphere) {
+		scene.add(new THREE.HemisphereLight(
+			volume.hemisphere.sky !== undefined ? volume.hemisphere.sky : 0xcfe4f4,
+			volume.hemisphere.ground !== undefined ? volume.hemisphere.ground : 0x8f7f5e,
+			volume.hemisphere.intensity !== undefined ? volume.hemisphere.intensity : 1.0
+		))
+	}
+
+	if(volume.sun) {
+		const sun = new THREE.DirectionalLight(
+			volume.sun.color !== undefined ? volume.sun.color : 0xfff1d8,
+			volume.sun.intensity !== undefined ? volume.sun.intensity : 2.0
+		)
+		sun.position.set(...(volume.sun.position || [100, 120, 40]))
+		sun.target.position.set(...(volume.sun.target || [0, 0, 0]))
+		if(volume.sun.shadow) {
+			const conf = typeof volume.sun.shadow === 'object' ? volume.sun.shadow : {}
+			const extent = conf.extent || 100
+			sun.castShadow = true
+			sun.shadow.mapSize.set(conf.size || 2048, conf.size || 2048)
+			sun.shadow.camera.left = -extent
+			sun.shadow.camera.right = extent
+			sun.shadow.camera.top = extent
+			sun.shadow.camera.bottom = -extent
+			sun.shadow.camera.near = conf.near || 1
+			sun.shadow.camera.far = conf.far || 500
+			sun.shadow.bias = -0.0004
+			sun.shadow.normalBias = 0.03
+		}
+		scene.add(sun)
+		scene.add(sun.target)
 	}
 
 	//

@@ -18,6 +18,21 @@ export function getThree() {
 }
 
 ///
+/// mark a texture as sRGB across three.js versions
+/// (texture.colorSpace landed ~r152; texture.encoding was removed ~r162)
+///
+
+export function markSRGB(texture) {
+	if(!THREE || !texture) return texture
+	if('colorSpace' in texture && THREE.SRGBColorSpace !== undefined) {
+		texture.colorSpace = THREE.SRGBColorSpace
+	} else if(THREE.sRGBEncoding !== undefined) {
+		texture.encoding = THREE.sRGBEncoding
+	}
+	return texture
+}
+
+///
 /// build a simple material from props
 ///
 
