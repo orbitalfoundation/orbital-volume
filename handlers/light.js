@@ -47,6 +47,34 @@ export default async function light(sys,surface,entity,delta) {
 
 	}
 
+	// optional shadow casting: volume.shadow = true | { size, extent, near, far }
+	// (same config shape as the scene handler's sun; the renderer's shadow map
+	// must be on — e.g. scene { prettier: true })
+	if(volume.shadow && volume.node.shadow) {
+		const conf = typeof volume.shadow === 'object' ? volume.shadow : {}
+		const node = volume.node
+		node.castShadow = true
+		node.shadow.mapSize.set(conf.size || 2048, conf.size || 2048)
+		if(node.shadow.camera && node.shadow.camera.isOrthographicCamera) {
+			const extent = conf.extent || 100
+			node.shadow.camera.left = -extent
+			node.shadow.camera.right = extent
+			node.shadow.camera.top = extent
+			node.shadow.camera.bottom = -extent
+		}
+		node.shadow.camera.near = conf.near || 1
+		node.shadow.camera.far = conf.far || 500
+		node.shadow.bias = -0.0004
+		node.shadow.normalBias = 0.03
+	}
+
+	// directional/spot lights aim at a target; expose it as volume.target and
+	// add it to the scene so three keeps it updated
+	if(volume.target && volume.node.target) {
+		volume.node.target.position.set(...volume.target)
+		if(surface.scene) surface.scene.add(volume.node.target)
+	}
+
 	// live binding
 	poseBind(surface,volume)
 

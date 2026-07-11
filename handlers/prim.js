@@ -57,6 +57,9 @@ export default async function prim(sys,surface,entity,delta) {
 
 	if(geometry) {
 		const node = volume.node = new THREE.Mesh(geometry, material)
+		// participate in shadows by default (no-op unless the renderer's
+		// shadow map is on and a light casts); opt out with shadow: false
+		node.castShadow = node.receiveShadow = volume.shadow !== false
 		poseBind(surface,volume,node)
 	}
 

@@ -7,6 +7,7 @@ import camera from './handlers/camera.js'
 import file from './handlers/file.js'
 import layer from './handlers/layer.js'
 import light from './handlers/light.js'
+import line from './handlers/line.js'
 import prim from './handlers/prim.js'
 import scene from './handlers/scene.js'
 import terrain from './handlers/terrain.js'
@@ -19,6 +20,7 @@ const handlers = {
 	file,
 	layer,
 	light,
+	line,
 	scene,
 	terrain,
 	dem:terrain,
@@ -87,6 +89,12 @@ async function resolve(blob,bus) {
 	if(blob.tick) {
 		const entities = Object.values(this._entities)
 		for(const entity of entities) {
+			// entities marked { volume: { static: true } } are built once and
+			// never revisited on tick — a large win for scenes with many
+			// immobile parts (walls, floors, props). Live-bound pose mutation
+			// still works (it writes straight into the three node), and
+			// explicit { volume } deltas and obliterate still reach them.
+			if(entity.volume.static && entity.volume._built && !entity.obliterate) continue
 			await this._update(bus,entity,null)
 		}
 	}

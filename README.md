@@ -23,6 +23,21 @@ There is a second demo at `terrain.html` (entry `demo-terrain.js`) showing the
 2.1 terrain + vegetation handlers: a satellite-draped Grand Canyon heightfield
 planted with a few thousand growing, swaying bamboo culms in two draw calls.
 
+## New in 2.2: lines, light shadows, static entities
+
+`geometry: 'line'` — a polyline in world space: `{ points: [[x,y,z],…],
+material: { color, opacity, dashed }, rev: 0 }`. Mutate `points` and bump
+`rev` to rebuild; fewer than two points hides the node.
+
+Shadow casting on lights: `volume.shadow = true | { size, extent, near, far }`
+(same shape as the scene handler's `sun`), plus `volume.target: [x,y,z]` for
+directional/spot lights. Prim meshes now cast and receive shadows by default
+(opt out with `shadow: false`) — a no-op until a shadow-casting light exists.
+
+`volume.static = true` — build the entity once and skip it on tick revisits,
+a large win for scenes with many immobile parts. Live-bound pose mutation
+still works; explicit `{ volume }` deltas and `obliterate` still reach it.
+
 ## New in 2.1: terrain, vegetation, atmosphere
 
 `geometry: 'terrain'` — heightfield terrain from raw elevation grids or
