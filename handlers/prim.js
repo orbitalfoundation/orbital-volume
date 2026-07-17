@@ -1,5 +1,5 @@
 
-import { getThree, ensureThree, buildMaterial, removeNode, poseBind, poseUpdate } from './three-helper.js'
+import { getThree, ensureThree, buildMaterial, removeNode, poseBind, poseUpdate, displaceVertices } from './three-helper.js'
 
 export default async function prim(sys,surface,entity,delta) {
 
@@ -50,6 +50,17 @@ export default async function prim(sys,surface,entity,delta) {
 			if(!volume.props) throw "Need Props"
 			geometry = new THREE.PlaneGeometry(...volume.props);
 			break;
+
+		case 'crystal': {
+			// facets selects the shape family; jitter shatters it (seeded, deterministic)
+			const facets = volume.facets || 20
+			geometry = facets <= 4 ? new THREE.TetrahedronGeometry(1)
+			         : facets <= 8 ? new THREE.OctahedronGeometry(1)
+			         :               new THREE.IcosahedronGeometry(1, 0)
+			if(volume.jitter) displaceVertices(geometry, volume.jitter, volume.seed || 1)
+			geometry.computeVertexNormals()
+			break;
+		}
 
 		default:
 			return

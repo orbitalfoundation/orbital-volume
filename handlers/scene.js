@@ -243,5 +243,23 @@ export default async function scene_handler(sys,surface,entity,delta) {
 	if(!canvas) {
 		div.appendChild(renderer.domElement)
 	}
+
+	//
+	// display-driven clock (opt-in via volume.clock)
+	//
+	// when a surface owns a realtime display it may own the tick loop: setAnimationLoop
+	// is identical to requestAnimationFrame outside XR and *required* during an XR
+	// session, so flat and immersive modes share one tick path. apps using the bus's
+	// { run:'realtime' } driver are untouched — do not enable both at once.
+	//
+
+	if(volume.clock) {
+		let last = performance.now()
+		renderer.setAnimationLoop(() => {
+			const now = performance.now()
+			sys.resolve({ tick:true, t: now/1000, dt: (now-last)/1000 })
+			last = now
+		})
+	}
 }
 

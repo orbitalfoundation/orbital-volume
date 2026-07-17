@@ -222,6 +222,27 @@ export function poseBind(surface,volume,node=null) {
 	node.matrixWorldNeedsUpdate = true
 }
 
+///
+/// displaceVertices
+///
+/// nudge vertices radially by a seeded random amount for a shattered / crystalline look.
+/// displacement is keyed on vertex *position* so coincident vertices (non-indexed
+/// polyhedron faces) move together and faces stay welded. deterministic per seed so
+/// networked clients generate identical geometry.
+///
+
+export function displaceVertices(geometry, amount = 0.15, seed = 1) {
+	const pos = geometry.attributes.position
+	if(!pos) return
+	for(let i = 0; i < pos.count; i++) {
+		const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
+		const h = Math.abs(Math.sin(x*127.1 + y*311.7 + z*74.7 + seed*13.131) * 43758.5453) % 1
+		const s = 1 + (h - 0.5) * 2 * amount
+		pos.setXYZ(i, x*s, y*s, z*s)
+	}
+	pos.needsUpdate = true
+}
+
 // scratch matrix — guarded so this module is importable on the server, where THREE is null
 const matrix = THREE ? new THREE.Matrix4() : null
 

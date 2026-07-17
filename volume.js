@@ -31,6 +31,7 @@ const handlers = {
 	box:prim,
 	plane:prim,
 	cylinder:prim,
+	crystal:prim,
 }
 
 // @todo decide if this is good enough for a uuid - could be much better
@@ -124,4 +125,6 @@ export const volume_system = {
 	_update,
 	_entities: {},
 	_surfaces: {},
+	// public accessor so peers (input, audio) never reach into _surfaces internals
+	surface: function(name='volume001') { return this._surfaces[name] },
 }
