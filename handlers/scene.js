@@ -44,7 +44,9 @@ export default async function scene_handler(sys,surface,entity,delta) {
 	// if a surface exists just update it - @todo handle obliterate
 	// requestAnimationFrame() is called elsewhere and this is called for us when it is time to repaint
 	if(surface.renderer) {
-		surface.renderer.render(surface.scene,surface.camera)
+		// the camera is its own entity and can arrive a few ticks after the scene: three's
+		// render() throws on an undefined camera (reading 'parent'), one error per frame until it lands
+		if(surface.scene && surface.camera) surface.renderer.render(surface.scene,surface.camera)
 		return
 	}
 
@@ -231,7 +233,7 @@ export default async function scene_handler(sys,surface,entity,delta) {
 		}
 		renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
 		renderer.setSize(surface.width,surface.height)
-		renderer.render(surface.scene,surface.camera)
+		if(surface.scene && surface.camera) renderer.render(surface.scene,surface.camera)
 	}
 
 	surface.resizeObserver = new ResizeObserver(resized).observe(div)
